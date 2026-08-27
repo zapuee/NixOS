@@ -8,7 +8,7 @@
       environment = "niri"; # niri, plasma, hyprland
 
       flatpak.enable = true; # for flatpak packages
-      hardware.gpu = "nvidia"; # nvidia, intel
+      hardware.gpu = "intel"; # nvidia intel
       
       doas.enable = true; # sudo -> doas = less bloat
       keyd.enable = true; # for key remapping
