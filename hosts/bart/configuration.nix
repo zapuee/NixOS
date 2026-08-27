@@ -4,7 +4,7 @@
 {
   config = {
     systemSettings = {
-      bootloader = "grub"; # grub, systemd
+      bootloader = "systemd"; # grub, systemd
       environment = "niri"; # niri, plasma, hyprland
 
       flatpak.enable = true; # for flatpak packages
@@ -12,7 +12,7 @@
       
       doas.enable = true; # sudo -> doas = less bloat
       keyd.enable = true; # for key remapping
-      virtualization.enable = true; # for testing builds in a vm
+      virtualization.enable = false; # for testing builds in a vm
     };
 
     # Assigning server user i think
@@ -32,6 +32,7 @@
       ];
     };
 
+    networking.networkmanager.enable = true;
     system.stateVersion = "26.05";
   };
 

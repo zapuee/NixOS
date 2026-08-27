@@ -5,7 +5,7 @@
     userSettings = {
 
       editor = "nvf"; # nvf
-      terminal = "foot"; # alacritty, kitty, foot
+      terminal = "alacritty"; # alacritty, kitty, foot
       browser = "firefox"; # firefox
       vpn = "proton"; # proton
 
