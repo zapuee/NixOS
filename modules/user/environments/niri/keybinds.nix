@@ -16,9 +16,13 @@ in
         spawn = [ config.userSettings.terminal ];
       };
 
+      "Mod+Space" = {
+        spawn = [ "noctalia" "msg" "panel-toggle" "control-center" "home" ];
+      };
+
       "Alt+Space" = {
-        _props.hotkey-overlay-title = "Run an Application: fuzzel";
-        spawn = [ "fuzzel" ];
+        _props.hotkey-overlay-title = "Open Noctalia Launcher";
+        spawn = [ "noctalia" "msg" "panel-toggle" "launcher" ];
       };
 
       "Super+Alt+S" = {

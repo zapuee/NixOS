@@ -1,0 +1,24 @@
+/**
+ * @name          Discord Reborn - Transparent
+ * @description   Transparent Discord Reborn theme with no wallpaper.
+ * @author        Izy
+ * @version       2.0
+ * @source        https://rawcdn.githack.com/squee666/Discord-Themes/refs/heads/master/css/Discord%20Reborn.css
+ * @invite        r59DjpaDHD
+ * @authorId      107511169366888448
+ */
+
+/* IMPORT CSS FROM GITHUB */
+@import url("https://cdn.jsdelivr.net/gh/squee666/Discord-Themes@refs/heads/master/css/Discord%20Reborn.css");
+
+:root {
+  --mc: #c9b458 !important;          /* Main Colour */
+  --hc: #d6c65a !important;          /* Hover Colour */
+
+  --BG: none !important;             /* No wallpaper */
+
+  --RB: rgba(0, 0, 0, 0) !important;   /* Fully transparent */
+  --RBT: rgba(0, 0, 0, 0) !important;  /* Fully transparent */
+
+  --br: 0% !important;               /* Square icons */
+}

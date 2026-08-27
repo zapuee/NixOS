@@ -15,10 +15,11 @@
     };
   };
 
-  config = {
-    programs.noctalia = lib.mkIf (config.userSettings.noctalia.enable) {
+  config = lib.mkIf (config.userSettings.noctalia.enable) {
+    home.file.".config/noctalia/config.toml".source = ./noctalia-config.toml;
+
+    programs.noctalia = {
       enable = true;
-      systemd.enable = true;
     };
   };
 }

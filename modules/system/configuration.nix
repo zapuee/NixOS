@@ -28,6 +28,8 @@
       experimental-features = nix-command flakes
     '';
 
+    home-manager.backupFileExtension = "backup";
+
     # Remove Bloat
     programs.nano.enable = lib.mkForce false;
 

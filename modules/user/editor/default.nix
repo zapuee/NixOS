@@ -9,6 +9,6 @@
       type = lib.types.enum [ "nvf" ];
     };
   };
-
+ 
   # conditionals defined within each editor module
 }

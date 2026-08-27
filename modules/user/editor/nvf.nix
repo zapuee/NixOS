@@ -10,10 +10,17 @@
       enable = true;
 
       settings.vim = {
+        clipboard = {
+          enable = true;
+          registers = "unnamedplus";
+          providers = {
+            wl-copy.enable = true;
+          };
+        };
+
         options = {
           number = true;
           relativenumber = true;
-          clipboard = "unnamedplus";
           shiftwidth = 4;
           tabstop = 4;
           softtabstop = 4;

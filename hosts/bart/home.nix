@@ -5,7 +5,7 @@
     userSettings = {
 
       editor = "nvf"; # nvf
-      terminal = "alacritty"; # alacritty, kitty, foot
+      terminal = "foot"; # alacritty, kitty, foot
       browser = "firefox"; # firefox
       vpn = "proton"; # proton
 
@@ -19,7 +19,7 @@
       spicetify.enable = true; # spotify but cooler
       
       starship.enable = true; # for cool terminal thoing
-      starship.style = "tokyonight"; # list is in the starship directory
+      starship.style = "backrooms"; # list is in the starship directory
 
       equibop.enable = true; # for discord
 

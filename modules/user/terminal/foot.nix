@@ -16,13 +16,17 @@ in {
       enable = true;
 
       settings = {
+        csd = {
+          preferred = "client";
+        };
+
         main = {
           font = "monospace:size=10";
           pad = "5x5";
         };
 
         colors = {
-          alpha = "0.8";
+          alpha = "0.65";
         };
 
         scrollback = {

@@ -3,6 +3,7 @@
 {
   config = lib.mkIf (osConfig.systemSettings.environment == "niri") {
     home.packages = with pkgs; [
+      wl-clipboard
       btop
       nautilus
       xwayland-satellite
