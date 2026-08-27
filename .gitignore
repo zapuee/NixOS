@@ -1,0 +1,21 @@
+
+# Kde stuff idk
+.directory
+
+# Nix build results
+result
+result-*
+
+# NixOS build-vm disk images
+*.qcow2
+
+# Local/editor files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets / local credentials
+secrets/
+*.pem
+*.key
