@@ -9,6 +9,10 @@ in
       enable = true;
 
       settings = {
+        input.keyboard = {
+          repeat-delay = 300;
+          repeat-rate = 60;
+        };
         spawn-at-startup = [
           "noctalia"
         ];

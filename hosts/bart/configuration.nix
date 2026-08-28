@@ -32,6 +32,7 @@
       ];
     };
 
+    boot.loader.systemd-boot.configurationLimit = 5;
     networking.networkmanager.enable = true;
     system.stateVersion = "26.05";
   };
