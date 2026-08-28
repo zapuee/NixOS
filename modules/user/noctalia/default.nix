@@ -1,4 +1,4 @@
-{ osConfig, config, inputs, lib, ... }:
+{ shared, osConfig, config, inputs, lib, ... }:
 
 # NOTE: Noctalia requires systemd
 
@@ -15,8 +15,9 @@
     };
   };
 
-  config = lib.mkIf (config.userSettings.noctalia.enable) {
-    home.file.".config/noctalia/config.toml".source = ./noctalia-config.toml;
+  config = lib.mkIf config.userSettings.noctalia.enable {
+    home.file.".config/noctalia/config.toml".source =
+      ./${shared.hostname}.toml;
 
     programs.noctalia = {
       enable = true;

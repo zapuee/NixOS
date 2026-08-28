@@ -3,7 +3,7 @@
 {
   config = {
     # Packages
-    environment.systemPackages = with pkgs; [ git ];
+    environment.systemPackages = with pkgs; [ git gh ];
 
     # Locale and TZ
     services.timesyncd.enable = lib.mkDefault true;

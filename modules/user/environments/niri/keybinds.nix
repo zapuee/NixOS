@@ -16,6 +16,12 @@ in
         spawn = [ config.userSettings.terminal ];
       };
 
+      "Mod+Shift+S".spawn = [
+        "sh"
+        "-c"
+        ''grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%Y-%m-%d_%H-%M-%S).png''
+      ];
+
       "Mod+Space" = {
         spawn = [ "noctalia" "msg" "panel-toggle" "control-center" "home" ];
       };

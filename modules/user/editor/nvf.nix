@@ -59,6 +59,9 @@
           enable = true;
         };
 
+        # Automatic Tab Size
+        utility.sleuth.enable = true;
+
         # Telescope
         telescope.enable = true;
 
@@ -73,6 +76,38 @@
 
         # Blink completion
         autocomplete.blink-cmp.enable = true;
+
+        # Highlight
+        highlight = {
+          Normal = {
+            fg = "#d0d0d0";
+            bg = "#1e1e1e";
+          };
+
+          NormalNC = {
+            fg = "#d0d0d0";
+            bg = "#1e1e1e";
+          };
+
+          SignColumn = {
+            bg = "#1e1e1e";
+          };
+
+          LineNr = {
+            fg = "#777777";
+            bg = "#1e1e1e";
+          };
+
+          CursorLineNr = {
+            fg = "#b8b8b8";
+            bg = "#1e1e1e";
+          };
+
+          Comment = {
+            fg = "#686868";
+            bg = "#1e1e1e";
+          };
+        };
 
         # UI helpers
         ui = {

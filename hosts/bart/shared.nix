@@ -1,5 +1,4 @@
 {
   username = "zap";
-  hostname = "bart";
-
+  hostname = builtins.baseNameOf ./.;
 }

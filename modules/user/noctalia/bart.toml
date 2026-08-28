@@ -1,3 +1,6 @@
+[accessibility]
+ui_scale = 0.95000000670552254
+
 [bar.default]
 background_opacity = 0.61999998614192009
 font_scale = 0.74999999068677425
@@ -69,9 +72,13 @@ widget_order = [ "lockscreen-login-box@eDP-1" ]
         show_unlock_hint = true
         show_weather = true
 
+[plugins]
+enabled = [ "yocraft/battery-widget" ]
+
 [shell]
-app_icon_colorize = true
+app_icon_colorize = false
 corner_radius_scale = 0.0
+time_format = "{:%-I:%M %p}"
 
     [shell.animation]
     speed = 2.0000000298023224
@@ -81,17 +88,25 @@ corner_radius_scale = 0.0
     compact = true
     show_app_actions = true
 
+    [shell.screen_corners]
+    size = 1
+
 [theme]
 builtin = "Gruvbox"
 community_palette = "Miasma"
-source = "community"
+mode = "dark"
+source = "wallpaper"
+wallpaper_scheme = "m3-content"
 
     [theme.templates]
     builtin_ids = [ "alacritty", "btop", "foot", "kitty", "niri" ]
     community_ids = [ "spicetify", "obsidian", "prismlauncher", "steam", "fastfetch" ]
 
 [wallpaper.default]
-path = "/nix/store/cnrvi9bczf7gl9y7hpi2nv3iy717zpa2-noctalia-5.0.0/share/noctalia/assets/noctalia-wallpaper.png"
+path = "/home/zap/Pictures/backrooms3.jpg"
 
 [wallpaper.last]
-path = "/nix/store/cnrvi9bczf7gl9y7hpi2nv3iy717zpa2-noctalia-5.0.0/share/noctalia/assets/noctalia-wallpaper.png"
+path = "/home/zap/Pictures/backrooms3.jpg"
+
+[wallpaper.monitors.eDP-1]
+path = "/home/zap/Pictures/backrooms3.jpg"

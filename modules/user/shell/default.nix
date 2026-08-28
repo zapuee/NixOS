@@ -17,6 +17,11 @@ in
       defaultKeymap = "viins";
       autosuggestion.enable = true;
         
+      initContent = ''
+        bindkey '^P' up-line-or-history
+        bindkey '^N' down-line-or-history
+      '';
+
       antidote = {
         enable = true;
         plugins = [

@@ -32,7 +32,7 @@
       ];
     };
 
-    boot.loader.systemd-boot.configurationLimit = 5;
+    boot.loader.systemd-boot.configurationLimit = lib.mkForce 5;
     networking.networkmanager.enable = true;
     system.stateVersion = "26.05";
   };

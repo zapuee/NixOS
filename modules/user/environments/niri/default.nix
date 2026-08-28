@@ -5,6 +5,11 @@ let
 in
 {
   config = lib.mkIf (cfg == builtins.baseNameOf ./.) {
+    home.packages = with pkgs; [
+      grim
+      slurp
+    ];
+
     wayland.windowManager.niri = {
       enable = true;
 
