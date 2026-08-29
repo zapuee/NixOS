@@ -1,0 +1,132 @@
+[accessibility]
+ui_scale = 0.95000000670552254
+
+[bar.default]
+background_opacity = 0.57999998703598976
+font_scale = 1.019999984651804
+radius = 8
+scale = 1.0500000081956387
+thickness = 25
+
+[dock]
+background_opacity = 0.46999998949468136
+cross_axis_padding = 0
+enabled = true
+icon_size = 38
+item_spacing = 4
+main_axis_padding = 34
+position = "left"
+radius = 22
+show_dots = true
+
+[keybinds]
+down = [ "Down", "Ctrl+j" ]
+left = [ "Left", "Ctrl+h" ]
+right = [ "Right", "Ctrl+l" ]
+up = [ "Up", "Ctrl+k" ]
+
+[lockscreen_widgets]
+enabled = false
+schema_version = 2
+widget_order = [ "lockscreen-login-box@DP-4", "lockscreen-login-box@DP-3" ]
+
+    [lockscreen_widgets.grid]
+    cell_size = 16
+    major_interval = 4
+    visible = true
+
+    [lockscreen_widgets.widget."lockscreen-login-box@DP-3"]
+    box_height = 196.0
+    box_width = 810.0
+    cx = 1280.0
+    cy = 898.0
+    output = "DP-3"
+    placement_height = 1080.0
+    placement_width = 2560.0
+    rotation = 0.0
+    type = "login_box"
+
+        [lockscreen_widgets.widget."lockscreen-login-box@DP-3".settings]
+        background_color = "surface_variant"
+        background_opacity = 0.88
+        background_radius = 12.0
+        center_password_text = false
+        input_opacity = 1.0
+        input_radius = 6.0
+        layout = "regular"
+        show_caps_lock = true
+        show_keyboard_layout = true
+        show_login_button = true
+        show_media = true
+        show_session_buttons = true
+        show_unlock_hint = true
+        show_weather = true
+
+    [lockscreen_widgets.widget."lockscreen-login-box@DP-4"]
+    box_height = 196.0
+    box_width = 810.0
+    cx = 1280.0
+    cy = 898.0
+    output = "DP-4"
+    placement_height = 1080.0
+    placement_width = 2560.0
+    rotation = 0.0
+    type = "login_box"
+
+        [lockscreen_widgets.widget."lockscreen-login-box@DP-4".settings]
+        background_color = "surface_variant"
+        background_opacity = 0.88
+        background_radius = 12.0
+        center_password_text = false
+        input_opacity = 1.0
+        input_radius = 6.0
+        layout = "regular"
+        show_caps_lock = true
+        show_keyboard_layout = true
+        show_login_button = true
+        show_media = true
+        show_session_buttons = true
+        show_unlock_hint = true
+        show_weather = true
+
+[osd]
+background_opacity = 0.93999997898936272
+
+[shell]
+corner_radius_scale = 0.0
+time_format = "{:%I:%M %p}"
+
+    [shell.animation]
+    speed = 2.0000000298023224
+
+    [shell.launcher]
+    app_grid = true
+    compact = true
+
+    [shell.panel]
+    transparency_mode = "glass"
+
+[theme]
+builtin = "Noctalia"
+community_palette = "Oxocarbon"
+mode = "dark"
+source = "wallpaper"
+wallpaper_scheme = "m3-content"
+
+[wallpaper]
+directory = "/home/zap/Pictures/Wallpapers"
+
+    [wallpaper.default]
+    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+
+    [wallpaper.last]
+    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+
+    [wallpaper.monitors.DP-3]
+    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+
+    [wallpaper.monitors.DP-4]
+    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+
+[widget.clock]
+format = "{:%I:%M %p}"
