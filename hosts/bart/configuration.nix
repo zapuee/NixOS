@@ -13,6 +13,7 @@
       doas.enable = true; # sudo -> doas = less bloat
       keyd.enable = true; # for key remapping
       virtualization.enable = false; # for testing builds in a vm
+      bluetooth.enable = true; # self explanitory
     };
 
     # Assigning server user i think
