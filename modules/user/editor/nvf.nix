@@ -73,6 +73,13 @@
           enable = true;
         };
 
+        # Because im a noobini pizzanini
+        binds.whichKey.enable = true;
+        ui.borders.plugins.which-key.enable = true;
+
+        # Navigation
+        utility.motion.flash-nvim.enable = true;
+
         # Fuzzy Find 
         fzf-lua.enable = true;
 
