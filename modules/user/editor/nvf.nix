@@ -35,24 +35,38 @@
           transparent = true;
         };
 
-        # Nix language + LSP + Treesitter
+        # Nix language 
         languages.nix = {
           enable = true;
-          lsp.enable = true;
           treesitter.enable = true;
           format.enable = false;
+          lsp = {
+            enable = true;
+            servers = [ "nixd" ];
+          };
         };
 
-        # Lua language + LSP + Treesitter
+        # Lua language
         languages.lua = {
           enable = true;
-          lsp.enable = true;
           treesitter.enable = true;
+          format.enable = false;
+          lsp = {
+            enable = true;
+            servers = [ "lua-language-server" ];
+          };
         };
 
-        # Explicit language servers
-        languages.nix.lsp.servers = [ "nixd" ];
-        languages.lua.lsp.servers = [ "lua-language-server" ];
+        # Rust language
+        languages.rust = {
+          enable = true;
+          treesitter.enable = true;
+          format.enable = false;
+          lsp = {
+            enable = true;
+            servers = [ "rust-analyzer" ];
+          };
+        };
 
         # Neo-tree
         filetree.neo-tree = {
@@ -83,7 +97,18 @@
         autopairs.nvim-autopairs.enable = true;
 
         # Blink completion
-        autocomplete.blink-cmp.enable = true;
+        autocomplete.blink-cmp = {
+          enable = true;
+        
+          setupOpts = {
+            keymap = {
+              preset = "default";
+        
+              "<C-n>" = [ "select_next" ];
+              "<C-p>" = [ "select_prev" ];
+            };
+          };
+        };
 
         # Highlight
         highlight = {
@@ -123,18 +148,27 @@
           illuminate.enable = true;
         };
 
+        globals = {
+          mapleader = "\\";
+          maplocalleader = "\\";
+        };
+
         keymaps = [
           {
             mode = "n";
             key = "<CR>";
             action = "o<Esc>";
           }
+
+          {
+            mode = "n";
+            key = "<leader>d";
+            action = "<cmd>lua vim.diagnostic.open_float()<CR>";
+            desc = "Show current diagnostic";
+          }
         ];
 
         luaConfigPost = ''
-          vim.g.mapleader = "\\"
-          vim.g.maplocalleader = "\\"
-
           vim.g.loaded_node_provider = 0
           vim.g.loaded_perl_provider = 0
           vim.g.loaded_ruby_provider = 0

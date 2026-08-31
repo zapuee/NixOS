@@ -15,6 +15,8 @@
       shell.apps.enable = true; # useful cli util
       shell.extraApps.enable = true; # fun cli like neofetch
 
+      programming-cli.enable = true; # stuff like cargo and whatnot
+
       media.enable = true; # media-players like vlc
       spicetify.enable = true; # spotify but cooler
       
