@@ -4,37 +4,37 @@ let
   cfg = config.userSettings.shell.apps;
 
   # terminal cli for yt and soundcloud
-  rs-pug = pkgs.rustPlatform.buildRustPackage rec {
-    pname = "rs-pug";
-    version = "1.0.4";
-
-    src = pkgs.fetchCrate {
-      inherit pname version;
-      hash = "sha256-KSGIS1vYcJCXCTkm3OrwWsPotSls2yq4JsEUiWFtThY=";
-    };
-
-    cargoHash = "sha256-4ZJaPpBK3fPFl4VpZyzsb+6ivnVP6Pe60BE8h3Tx/Gg=";
-
-    nativeBuildInputs = with pkgs; [
-      pkg-config
-      makeWrapper
-    ];
-
-    buildInputs = with pkgs; [
-      mpv
-      yt-dlp
-    ];
-
-    doCheck = false;
-
-    postInstall = ''
-      wrapProgram $out/bin/rs-pug \
-        --prefix PATH : ${lib.makeBinPath [
-          pkgs.mpv
-          pkgs.yt-dlp
-        ]}
-    '';
-  };
+  #  rs-pug = pkgs.rustPlatform.buildRustPackage rec {
+  #    pname = "rs-pug";
+  #    version = "1.0.4";
+  #
+  #    src = pkgs.fetchCrate {
+  #      inherit pname version;
+  #      hash = "sha256-KSGIS1vYcJCXCTkm3OrwWsPotSls2yq4JsEUiWFtThY=";
+  #    };
+  #
+  #    cargoHash = "sha256-4ZJaPpBK3fPFl4VpZyzsb+6ivnVP6Pe60BE8h3Tx/Gg=";
+  #
+  #    nativeBuildInputs = with pkgs; [
+  #      pkg-config
+  #      makeWrapper
+  #    ];
+  #
+  #    buildInputs = with pkgs; [
+  #      mpv
+  #      yt-dlp
+  #    ];
+  #
+  #    doCheck = false;
+  #
+  #    postInstall = ''
+  #      wrapProgram $out/bin/rs-pug \
+  #        --prefix PATH : ${lib.makeBinPath [
+  #          pkgs.mpv
+  #          pkgs.yt-dlp
+  #        ]}
+  #    '';
+  #  };
 
   btopPatch = # fix btop from not having nvidia support
     if osConfig.systemSettings.hardware.gpu == "nvidia" then
@@ -60,7 +60,7 @@ in
       killall
       trashy
       btopPatch
-      rs-pug
+      #     rs-pug
     ];
   };
 }

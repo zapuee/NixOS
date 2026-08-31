@@ -2,7 +2,7 @@
 
 {
   config = lib.mkIf (shared.hostname == "bart") {
-    wayland.windowManager.niri.settings.outputs = {
+    wayland.windowManager.niri.settings = {
       layout = {
         focus-ring = {
           width = 3;
