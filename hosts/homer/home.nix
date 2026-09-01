@@ -23,7 +23,8 @@
       starship.enable = true; # for cool terminal thoing
       starship.style = "tokyonight"; # list is in the starship directory
 
-      equibop.enable = true; # for discord
+      discord.enable = true;
+      discord.client = "vencord"; # equibop, vencord
 
     };
 

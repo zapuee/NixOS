@@ -1,31 +1,26 @@
 { lib, config, ... }:
 
 let
-  cfg = config.userSettings.equibop;
-
-  # Find every .css file beside this module
+  # Find every .css file in ../themes/
   cssFiles = lib.filterAttrs
     (name: type:
       type == "regular" && lib.hasSuffix ".css" name
     )
-    (builtins.readDir ./.);
+    (builtins.readDir ../themes);
 
   # Read every CSS file into an attribute set
   themes = lib.mapAttrs
-    (name: _: builtins.readFile ./${name})
+    (name: _: builtins.readFile ../themes/${name})
     cssFiles;
 
   # Automatically enable every discovered theme
   enabledThemes = builtins.attrNames themes;
 in
 {
-  options.userSettings.equibop.enable = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = "Enable Equibop";
-  };
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (
+    config.userSettings.discord.client == "equibop" &&
+    config.userSettings.discord.enable
+  ) {
     programs.equibop = {
       enable = true;
 
