@@ -15,6 +15,14 @@
 	DisableFirefoxStudies = true;
 	DontCheckDefaultBrowser = true;
 	DisablePocket = true;
+
+	ExtensionSettings = {
+          "{7c7f6dea-3957-4bb9-9eec-2ef2b9e5bcec}" = {
+            installation_mode = "force_installed";
+            install_url =
+              "https://addons.mozilla.org/firefox/downloads/latest/ultimadark/latest.xpi";
+          };
+        };
       };
 
       profiles = {
@@ -24,7 +32,7 @@
 	  extensions = {
 	    packages = with pkgs.nur.repos.rycee.firefox-addons; [
 	      ublock-origin
-	      darkreader
+	      #darkreader
 	      vimium
 	    ];
 	  };
