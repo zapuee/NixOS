@@ -10,7 +10,10 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ pkgs.foot ];
+    home.packages = [ 
+      pkgs.foot
+      pkgs.nerd-fonts.lilex
+    ];
 
     programs.foot = {
       enable = true;
@@ -18,10 +21,11 @@ in {
       settings = {
         csd = {
           preferred = "client";
+          size = 0; # remove title bar
         };
 
         main = {
-          font = "monospace:size=10";
+          font = "Lilex Nerd Font Mono:size=10";
           pad = "5x5";
         };
 

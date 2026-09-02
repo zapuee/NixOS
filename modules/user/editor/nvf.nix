@@ -26,12 +26,13 @@
           softtabstop = 4;
           expandtab = true;
           completeopt = "menuone,noselect";
+          showtabline = 1;
         };
 
         theme = {
           enable = true;
           name = "tokyonight";
-          style = "moon";
+          style = "storm";
           transparent = true;
         };
 
@@ -88,6 +89,13 @@
         # Show indent
         visuals.indent-blankline.enable = true;
 
+        # Nice scrollbar
+        visuals.satellite-nvim.enable = true;
+
+        # Show CursorLine 
+        visuals.nvim-cursorline.enable = true;
+        visuals.nvim-cursorline.setupOpts.cursorline.enable = true;
+
         # Colors!
         ui.nvim-highlight-colors.enable = true;
 
@@ -102,12 +110,13 @@
 
         # Autoclose
         autopairs.nvim-autopairs.enable = true;
-
+        
         # Blink completion
         autocomplete.blink-cmp = {
           enable = true;
         
           setupOpts = {
+            completion.menu.border = "rounded";
             keymap = {
               preset = "default";
         
@@ -119,33 +128,104 @@
 
         # Highlight
         highlight = {
+          IblIndent = {
+            fg = "#30353f";
+          };
+          
+          IblScope = {
+            fg = "#3a414d";
+          };
+
+          BlinkCmpMenu = {
+            fg = "#c7ccd6";
+            bg = "#292e38";
+          };
+
+          BlinkCmpMenuBorder = {
+            fg = "#343a46";
+            bg = "#292e38";
+          };
+
+          BlinkCmpMenuSelection = {
+            fg = "#d6d9e0";
+            bg = "#353b47";
+          };
+
+          # Optional: make the secondary text more subdued
+          BlinkCmpLabelDetail = {
+            fg = "#737b89";
+          };
+
+          BlinkCmpLabelDescription = {
+            fg = "#7d8594";
+          };
+
+          NormalFloat = {
+            fg = "#c7ccd6";
+            bg = "#292e38";
+          };
+
+          FloatBorder = {
+            fg = "#343a46";
+            bg = "#292e38";
+          };
+
           Normal = {
-            fg = "#d0d0d0";
-            bg = "#1e1e1e";
+            fg = "#d4d7de";
+            bg = "#202329";
           };
-
+      
           NormalNC = {
-            fg = "#d0d0d0";
-            bg = "#1e1e1e";
+            fg = "#d4d7de";
+            bg = "#202329";
           };
-
+      
           SignColumn = {
-            bg = "#1e1e1e";
+            bg = "#202329";
           };
-
+      
           LineNr = {
-            fg = "#777777";
-            bg = "#1e1e1e";
+            fg = "#59616e";
+            bg = "#202329";
           };
-
+      
+          CursorLine = {
+            bg = "#292e38";
+          };
+      
           CursorLineNr = {
-            fg = "#b8b8b8";
-            bg = "#1e1e1e";
+            fg = "#aeb7c5";
+            bg = "#292e38";
+          };
+      
+          Comment = {
+            fg = "#626b78";
+            bg = "#202329";
           };
 
-          Comment = {
-            fg = "#686868";
-            bg = "#1e1e1e";
+          StatusLine = {
+            fg = "#aeb7c5";
+            bg = "#292e38";
+          };
+        
+          VertSplit = {
+            fg = "#343a46";
+            bg = "#202329";
+          };
+        
+          WinSeparator = {
+            fg = "#343a46";
+            bg = "#202329";
+          };
+        
+          Pmenu = {
+            fg = "#d4d7de";
+            bg = "#292e38";
+          };
+        
+          PmenuSel = {
+            fg = "#ffffff";
+            bg = "#3a4352";
           };
         };
 
@@ -161,6 +241,13 @@
         };
 
         keymaps = [
+          {
+            key = "t";
+            mode = "n";
+            action = ":tabnew<CR>";
+            silent = true;
+          }
+
           {
             mode = "n";
             key = "<CR>";
