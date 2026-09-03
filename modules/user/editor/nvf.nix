@@ -86,6 +86,9 @@
 
         utility.surround.enable = true;
 
+        # lsp info 
+        visuals.fidget-nvim.enable = true;
+
         # Show indent
         visuals.indent-blankline.enable = true;
 
