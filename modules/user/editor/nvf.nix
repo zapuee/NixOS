@@ -92,6 +92,9 @@
         # Show indent
         visuals.indent-blankline.enable = true;
 
+        # Splitjoin 
+        mini.splitjoin.enable = true;
+
         # Nice scrollbar
         visuals.satellite-nvim.enable = true;
 
