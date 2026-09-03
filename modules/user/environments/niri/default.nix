@@ -21,12 +21,35 @@ in
         spawn-at-startup = [
           "noctalia"
         ];
-        window-rule._children = [
+        _children = [
           {
-            geometry-corner-radius = 0;
-            clip-to-geometry = true;
+            window-rule = {
+              match._props = {
+                app-id = "firefox$";
+                title = "^Picture-in-Picture$";
+              };
+        
+              open-floating = true;
+              geometry-corner-radius = 0;
+              clip-to-geometry = true;
+            };
           }
         ];
+        # window-rule = {
+        #   _children = [
+        #     {
+        #       geometry-corner-radius = 0;
+        #       clip-to-geometry = true;
+        #     }
+        #   ];
+        #   matches = [
+        #     {
+        #       app-id = "firefox$";
+        #       title = "^Picture-in-Picture$";
+        #     }
+        #   ];
+        #   open-floating = true;
+        # };
       };
     };
   };
