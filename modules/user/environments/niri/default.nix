@@ -14,6 +14,7 @@ in
       enable = true;
 
       settings = {
+        prefer-no-csd = {};
         input.keyboard = {
           repeat-delay = 300;
           repeat-rate = 60;
@@ -32,24 +33,10 @@ in
               open-floating = true;
               geometry-corner-radius = 0;
               clip-to-geometry = true;
+              draw-border-with-background = false;
             };
           }
         ];
-        # window-rule = {
-        #   _children = [
-        #     {
-        #       geometry-corner-radius = 0;
-        #       clip-to-geometry = true;
-        #     }
-        #   ];
-        #   matches = [
-        #     {
-        #       app-id = "firefox$";
-        #       title = "^Picture-in-Picture$";
-        #     }
-        #   ];
-        #   open-floating = true;
-        # };
       };
     };
   };

@@ -5,11 +5,12 @@
     wayland.windowManager.niri.settings = {
       layout = {
         focus-ring = {
-          width = 3;
-          active-color = "#30303080";
-          inactive-color = "#18181860";
-          urgent-color = "#3a3a3a80";
+          width = 2;
+          active-color = "#242424";
+          inactive-color = "#00000000";
+          urgent-color = "#00000000";
         };
+        border.off = {};
       };
     };
   };

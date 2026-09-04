@@ -57,11 +57,13 @@ in
 
   config = lib.mkIf cfg.enable {
 
-    # file system (spf)
+    # file system (superfile)
     programs.superfile = {
       enable = true;
-      theme = "nord";
-      transparent_background = true;
+      settings = {
+        theme = "nord";
+        transparent_background = true;
+      };
     };
 
     home.packages = with pkgs; [

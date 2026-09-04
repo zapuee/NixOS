@@ -21,7 +21,7 @@
       spicetify.enable = true; # spotify but cooler
       
       starship.enable = true; # for cool terminal thoing
-      starship.style = "tokyonight"; # list is in the starship directory
+      starship.style = "grayscale"; # list is in the starship directory
 
       discord.enable = true;
       discord.client = "vencord"; # equibop, vencord

@@ -11,7 +11,7 @@
       #      ];
       
       policies = {
-	DisableTelemtry = true;
+	DisableTelemetry = true;
 	DisableFirefoxStudies = true;
 	DontCheckDefaultBrowser = true;
 	DisablePocket = true;
@@ -32,7 +32,7 @@
 	  extensions = {
 	    packages = with pkgs.nur.repos.rycee.firefox-addons; [
 	      ublock-origin
-	      #darkreader
+	      new-tab-override
 	      vimium
 	    ];
 	  };
@@ -40,6 +40,7 @@
 	  settings = {
 	    "extensions.autoDisableScopes" = 0; #automatically enable extensions
 	    "browser.startup.homepage" = "https://www.google.com";   
+	    "browser.compactmode.show" = true;
 	  };
 	};
       };

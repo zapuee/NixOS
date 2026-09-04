@@ -30,7 +30,7 @@ in {
         };
 
         colors = {
-          alpha = "0.65";
+          alpha = "1";
         };
 
         scrollback = {
