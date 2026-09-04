@@ -56,6 +56,14 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+
+    # file system (spf)
+    programs.superfile = {
+      enable = true;
+      theme = "nord";
+      transparent_background = true;
+    };
+
     home.packages = with pkgs; [
       killall
       trashy
