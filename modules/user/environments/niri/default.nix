@@ -27,6 +27,18 @@ in
             window-rule = {
               match._props = {
                 app-id = "firefox$";
+              };
+        
+              opacity = 0.835;
+              background-effect = {
+                blur = true;
+              };
+            };
+          }
+          {
+            window-rule = {
+              match._props = {
+                app-id = "firefox$";
                 title = "^Picture-in-Picture$";
               };
         

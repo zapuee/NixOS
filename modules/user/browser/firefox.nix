@@ -1,14 +1,19 @@
-{ pkgs, ... }:
+{ config, lib, inputs, pkgs, ... }:
 
 {
   config = {
+    home.file.".mozilla/firefox".source =
+      config.lib.file.mkOutOfStoreSymlink
+        "${config.home.homeDirectory}/.config/mozilla/firefox";
+
+    home.activation.pywalfoxNoctalia =
+      lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        ${inputs.noctalia.packages.${pkgs.system}.default}/bin/noctalia firefox-theme install
+      '';
+
     programs.firefox = {
       enable = true;
       package = pkgs.firefox;
-      #      nativeMessagingHosts = [ 
-      #        pkgs.firefoxpwa
-      #	      pkgs.kdePackages.plasma-browser-integration
-      #      ];
       
       policies = {
 	DisableTelemetry = true;
@@ -34,6 +39,7 @@
 	      ublock-origin
 	      new-tab-override
 	      vimium
+	      pywalfox
 	    ];
 	  };
 
@@ -41,6 +47,8 @@
 	    "extensions.autoDisableScopes" = 0; #automatically enable extensions
 	    "browser.startup.homepage" = "https://www.google.com";   
 	    "browser.compactmode.show" = true;
+	    "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+	    "browser.tabs.allow_transparent_browser" = true;
 	  };
 	};
       };

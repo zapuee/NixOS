@@ -28,13 +28,23 @@ in
       default = "tokyonight";
       description = "The Starship theme";
     };
+
+    useNoctalia = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Update starship via noctalia template";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     programs.starship = {
       enable = true;
       enableZshIntegration = true;
-      settings = builtins.fromTOML(builtins.readFile ./${cfg.style}.toml);
+      settings = lib.optionalAttrs (!cfg.useNoctalia) (
+        builtins.fromTOML (
+          builtins.readFile ./${cfg.style}.toml
+        )
+      );
     };
   };
 }

@@ -2,22 +2,46 @@
 ui_scale = 0.95000000670552254
 
 [bar.default]
-background_opacity = 0.57999998703598976
+background_opacity = 0.46999998949468136
 font_scale = 1.019999984651804
-radius = 8
-scale = 1.0500000081956387
+padding = 25
+radius = 4
+scale = 1.0000000074505806
+shadow = false
+smart_auto_hide = true
 thickness = 25
 
+[control_center]
+width = 900
+
 [dock]
-background_opacity = 0.46999998949468136
+background_opacity = 0.54999998770654202
 cross_axis_padding = 0
 enabled = true
 icon_size = 38
 item_spacing = 4
 main_axis_padding = 34
 position = "left"
-radius = 22
+radius = 2
 show_dots = true
+
+[idle]
+behavior_order = [ "lock", "screen-off", "lock-and-suspend" ]
+
+    [idle.behavior.lock]
+    action = "lock"
+    enabled = false
+    timeout = 600.0
+
+    [idle.behavior.lock-and-suspend]
+    action = "lock_and_suspend"
+    enabled = true
+    timeout = 2400.0
+
+    [idle.behavior.screen-off]
+    action = "screen_off"
+    enabled = true
+    timeout = 1800.0
 
 [keybinds]
 down = [ "Down", "Ctrl+j" ]
@@ -26,7 +50,7 @@ right = [ "Right", "Ctrl+l" ]
 up = [ "Up", "Ctrl+k" ]
 
 [lockscreen_widgets]
-enabled = false
+enabled = true
 schema_version = 2
 widget_order = [ "lockscreen-login-box@DP-4", "lockscreen-login-box@DP-3" ]
 
@@ -39,7 +63,7 @@ widget_order = [ "lockscreen-login-box@DP-4", "lockscreen-login-box@DP-3" ]
     box_height = 196.0
     box_width = 810.0
     cx = 1280.0
-    cy = 898.0
+    cy = 878.0
     output = "DP-3"
     placement_height = 1080.0
     placement_width = 2560.0
@@ -89,11 +113,17 @@ widget_order = [ "lockscreen-login-box@DP-4", "lockscreen-login-box@DP-3" ]
         show_unlock_hint = true
         show_weather = true
 
+[nightlight]
+force = true
+temperature_day = 8400
+temperature_night = 1600
+
 [osd]
 background_opacity = 0.93999997898936272
 
 [shell]
 corner_radius_scale = 0.0
+settings_window_translucent = true
 time_format = "{:%I:%M %p}"
 
     [shell.animation]
@@ -104,29 +134,56 @@ time_format = "{:%I:%M %p}"
     compact = true
 
     [shell.panel]
+    control_center_placement = "floating"
+    control_center_position = "center"
+    session_placement = "floating"
+    session_position = "center"
     transparency_mode = "glass"
+    wallpaper_placement = "floating"
+
+    [shell.screen_corners]
+    size = 1
+
+    [shell.shadow]
+    alpha = 0.0
 
 [theme]
 builtin = "Noctalia"
-community_palette = "Oxocarbon"
+community_palette = "Zenbones"
 mode = "dark"
-source = "wallpaper"
+source = "community"
 wallpaper_scheme = "m3-content"
+
+    [theme.templates]
+    builtin_ids = [ "alacritty", "btop", "foot", "kitty", "niri", "starship" ]
+    community_ids = [
+        "spicetify",
+        "pywalfox-beta4",
+        "discord",
+        "blender",
+        "gimp",
+        "obsidian",
+        "prismlauncher",
+        "steam",
+        "fastfetch",
+        "fzf",
+        "tmux"
+    ]
 
 [wallpaper]
 directory = "/home/zap/Pictures/Wallpapers"
 
     [wallpaper.default]
-    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+    path = "/home/zap/Pictures/Wallpapers/dark.jpeg"
 
     [wallpaper.last]
-    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+    path = "/home/zap/Pictures/Wallpapers/dark.jpeg"
 
     [wallpaper.monitors.DP-3]
-    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+    path = "/home/zap/Pictures/Wallpapers/dark.jpeg"
 
     [wallpaper.monitors.DP-4]
-    path = "/home/zap/Pictures/Wallpapers/wallhaven-8oeg9y.jpg"
+    path = "/home/zap/Pictures/Wallpapers/dark.jpeg"
 
 [widget.clock]
 format = "{:%I:%M %p}"

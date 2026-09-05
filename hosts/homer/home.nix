@@ -22,6 +22,7 @@
       
       starship.enable = true; # for cool terminal thoing
       starship.style = "grayscale"; # list is in the starship directory
+      starship.useNoctalia = true; # noctalia wallpaper defines the style
 
       discord.enable = true;
       discord.client = "vencord"; # equibop, vencord
