@@ -27,6 +27,8 @@ in {
         main = {
           font = "Lilex Nerd Font Mono:size=10";
           pad = "5x5";
+
+          include = "~/.config/foot/themes/noctalia";
         };
 
         colors = {
