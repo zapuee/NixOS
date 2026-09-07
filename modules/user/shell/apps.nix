@@ -57,13 +57,16 @@ in
 
   config = lib.mkIf cfg.enable {
 
-    # file system (superfile)
-    programs.superfile = {
+    # fuzzy finder
+    programs.television = {
       enable = true;
-      settings = {
-        theme = "nord";
-        transparent_background = true;
-      };
+      enableZshIntegration = true;        
+    };
+
+    # file system (yazi)
+    programs.yazi = {
+      enable = true;
+      enableZshIntegration = true;
     };
 
     home.packages = with pkgs; [

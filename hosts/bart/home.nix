@@ -8,12 +8,15 @@
       terminal = "foot"; # alacritty, kitty, foot
       browser = "firefox"; # firefox
       vpn = "proton"; # proton
+      bitwarden.enable = true; # password manager (CLI)
 
       noctalia.enable = true; # for wayland: niri/hyprland ricing
 
       shell.enable = true; # enable misc zsh configs
       shell.apps.enable = true; # useful cli util
       shell.extraApps.enable = true; # fun cli like neofetch
+
+      tmux.enable = true; # tmux obv
 
       programming-cli.enable = true; # stuff like cargo and whatnot
 

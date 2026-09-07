@@ -36,7 +36,7 @@
           transparent = true;
         };
 
-        # Nix language 
+        # Nix language
         languages.nix = {
           enable = true;
           treesitter.enable = true;
@@ -74,6 +74,9 @@
           enable = true;
         };
 
+        # tmux navigation
+        utility.smart-splits.enable = true;
+
         # Because im a noobini pizzanini
         binds.whichKey.enable = true;
         ui.borders.plugins.which-key.enable = true;
@@ -81,24 +84,24 @@
         # Navigation
         utility.motion.flash-nvim.enable = true;
 
-        # Fuzzy Find 
+        # Fuzzy Find
         fzf-lua.enable = true;
 
         utility.surround.enable = true;
 
-        # lsp info 
+        # lsp info
         visuals.fidget-nvim.enable = true;
 
         # Show indent
         visuals.indent-blankline.enable = true;
 
-        # Splitjoin 
+        # Splitjoin
         mini.splitjoin.enable = true;
 
         # Nice scrollbar
         visuals.satellite-nvim.enable = true;
 
-        # Show CursorLine 
+        # Show CursorLine
         visuals.nvim-cursorline.enable = true;
         visuals.nvim-cursorline.setupOpts.cursorline.enable = true;
 
@@ -109,23 +112,35 @@
         utility.sleuth.enable = true;
 
         # Harpoon
-        navigation.harpoon.enable = true;
+        navigation.harpoon = {
+          enable = true;
+
+          mappings = {
+            markFile = "<leader>ea";
+            listMarks = "<leader>ee";
+            file1 = "<leader>e1";
+            file2 = "<leader>e2";
+            file3 = "<leader>e3";
+            file4 = "<leader>e4";
+          };
+        };
 
         # Lualine
         statusline.lualine.enable = true;
 
         # Autoclose
         autopairs.nvim-autopairs.enable = true;
-        
+
         # Blink completion
         autocomplete.blink-cmp = {
           enable = true;
-        
+
           setupOpts = {
             completion.menu.border = "rounded";
+
             keymap = {
               preset = "default";
-        
+
               "<C-n>" = [ "select_next" ];
               "<C-p>" = [ "select_prev" ];
             };
@@ -137,7 +152,7 @@
           IblIndent = {
             fg = "#30353f";
           };
-          
+
           IblScope = {
             fg = "#3a414d";
           };
@@ -180,30 +195,30 @@
             fg = "#d4d7de";
             bg = "#202329";
           };
-      
+
           NormalNC = {
             fg = "#d4d7de";
             bg = "#202329";
           };
-      
+
           SignColumn = {
             bg = "#202329";
           };
-      
+
           LineNr = {
             fg = "#59616e";
             bg = "#202329";
           };
-      
+
           CursorLine = {
             bg = "#292e38";
           };
-      
+
           CursorLineNr = {
             fg = "#aeb7c5";
             bg = "#292e38";
           };
-      
+
           Comment = {
             fg = "#626b78";
             bg = "#202329";
@@ -213,22 +228,22 @@
             fg = "#aeb7c5";
             bg = "#292e38";
           };
-        
+
           VertSplit = {
             fg = "#343a46";
             bg = "#202329";
           };
-        
+
           WinSeparator = {
             fg = "#343a46";
             bg = "#202329";
           };
-        
+
           Pmenu = {
             fg = "#d4d7de";
             bg = "#292e38";
           };
-        
+
           PmenuSel = {
             fg = "#ffffff";
             bg = "#3a4352";
@@ -273,11 +288,11 @@
           vim.g.loaded_perl_provider = 0
           vim.g.loaded_ruby_provider = 0
           vim.g.loaded_python3_provider = 0
-        
+
           vim.keymap.set("n", "<Tab>", function()
             local row, col = unpack(vim.api.nvim_win_get_cursor(0))
             local indent = string.rep(" ", vim.bo.shiftwidth)
-        
+
             vim.api.nvim_buf_set_text(
               0,
               row - 1,
@@ -286,44 +301,17 @@
               col,
               { indent }
             )
-        
+
             vim.api.nvim_win_set_cursor(0, { row, col + #indent })
           end)
-        
+
           -- fzf-lua
           local fzf = require("fzf-lua")
-        
+
           vim.keymap.set("n", "<leader>ff", fzf.files, { desc = "Find Files" })
           vim.keymap.set("n", "<leader>fg", fzf.live_grep, { desc = "Live Grep" })
           vim.keymap.set("n", "<leader>fb", fzf.buffers, { desc = "Find Buffers" })
           vim.keymap.set("n", "<leader>fh", fzf.help_tags, { desc = "Help Tags" })
-        
-          -- Harpoon
-          local harpoon = require("harpoon")
-        
-          vim.keymap.set("n", "<leader>ea", function()
-            harpoon:list():add()
-          end, { desc = "Harpoon Add" })
-        
-          vim.keymap.set("n", "<leader>ee", function()
-            harpoon.ui:toggle_quick_menu(harpoon:list())
-          end, { desc = "Harpoon Menu" })
-        
-          vim.keymap.set("n", "<leader>e1", function()
-            harpoon:list():select(1)
-          end, { desc = "Harpoon File 1" })
-        
-          vim.keymap.set("n", "<leader>e2", function()
-            harpoon:list():select(2)
-          end, { desc = "Harpoon File 2" })
-        
-          vim.keymap.set("n", "<leader>e3", function()
-            harpoon:list():select(3)
-          end, { desc = "Harpoon File 3" })
-        
-          vim.keymap.set("n", "<leader>e4", function()
-            harpoon:list():select(4)
-          end, { desc = "Harpoon File 4" })
 
           vim.keymap.set("n", "<leader>t", "<cmd>Neotree toggle<CR>", {
             desc = "Neo-tree",

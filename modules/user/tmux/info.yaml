@@ -1,0 +1,11 @@
+name: info
+root: ~/
+
+windows:
+  - dashboard:
+      layout: 'de13,308x52,0,0{51x52,0,0,15,46x52,52,0[46x20,52,0,10,46x31,52,21,17],209x52,99,0,13}'
+      panes:
+        - lavat
+        - tty-clock -c -t
+        - unimatrix
+        - btop

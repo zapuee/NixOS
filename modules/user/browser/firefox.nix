@@ -34,10 +34,30 @@
 	mah_main = {
 	  id = 0;
 
+	  search = {
+	    default = "startpage";
+	    privateDefault = "startpage";
+	    force = true;
+	    order = [
+	      "startpage"
+	    ];
+
+	    engines = {
+	      startpage = {
+		name = "Startpage";
+		urls = [
+		  {template = "https://www.startpage.com/sp/search?query={searchTerms}";}
+		];
+		definedAliases = [ "@sp" ];
+	      };
+	    };
+	  };
+
 	  extensions = {
 	    packages = with pkgs.nur.repos.rycee.firefox-addons; [
 	      ublock-origin
 	      new-tab-override
+	      bitwarden
 	      vimium
 	      pywalfox
 	    ];
@@ -45,10 +65,11 @@
 
 	  settings = {
 	    "extensions.autoDisableScopes" = 0; #automatically enable extensions
-	    "browser.startup.homepage" = "https://www.google.com";   
+	    "browser.startup.homepage" = "https://www.startpage.com";   
 	    "browser.compactmode.show" = true;
 	    "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
 	    "browser.tabs.allow_transparent_browser" = true;
+	    "dom.serviceWorkers.enabled" = true;
 	  };
 	};
       };

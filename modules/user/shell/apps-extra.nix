@@ -17,6 +17,7 @@ in
       unimatrix
       cava
       lavat
+      tty-clock
     ];
   };
 }

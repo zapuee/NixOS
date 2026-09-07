@@ -10,6 +10,7 @@
       flatpak.enable = true; # for flatpak packages
       hardware.gpu = "intel"; # nvidia intel
       
+      mail.enable = true; # tutomail desktop
       doas.enable = true; # sudo -> doas = less bloat
       keyd.enable = true; # for key remapping
       virtualization.enable = false; # for testing builds in a vm
