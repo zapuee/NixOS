@@ -30,6 +30,16 @@
 
     home-manager.backupFileExtension = "backup";
 
+    # Printing (move this into a optional folder later)
+    services.printing = {
+      enable = true;
+      drivers = [ pkgs.brlaser ];
+    };
+    services.avahi = {
+      enable = true;
+      nssmdns4 = true;
+    };
+
     # Remove Bloat
     programs.nano.enable = lib.mkForce false;
 

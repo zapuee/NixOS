@@ -36,6 +36,10 @@
 
     networking.networkmanager.enable = true;
     system.stateVersion = "26.05";
+
+    # for my acer monitor config 
+    boot.kernelModules = [ "i2c-dev" ];
+    environment.systemPackages = with pkgs; [ ddcutil ddccontrol ];
   };
 
 }
