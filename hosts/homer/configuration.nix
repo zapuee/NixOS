@@ -15,6 +15,8 @@
       keyd.enable = true; # for key remapping
       virtualization.enable = true; # for testing builds in a vm
       bluetooth.enable = true; # self explanitory
+      games.enable = true; # bunch of launchers and sober
+      ai.enable = true; # for ai stuff
     };
 
     # Assigning server user i think

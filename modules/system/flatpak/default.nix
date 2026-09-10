@@ -16,7 +16,6 @@ in {
     services.flatpak = {
       enable = true;
       packages = [
-        "org.vinegarhq.Sober"
         (let
            sha256 = "sha256-mFCGbrMCiaL2TQ+BOZId3G1+vIlSKHvBq7oGsfMIBYA=";
          in {
@@ -28,6 +27,10 @@ in {
              inherit sha256;
            }}";
          })
+      ] ++ lib.optionals config.systemSettings.games.enable [
+        # games
+        "org.vinegarhq.Sober"
+        "com.usebottles.bottles"
       ];
 
       uninstallUnmanaged = true;
