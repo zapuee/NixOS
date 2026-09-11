@@ -1,7 +1,7 @@
 { shared, lib, ... }:
 
 {
-  config = lib.mkIf (shared.hostname == "homer") {
+  config = lib.mkIf (shared.hostname == "bart") {
     wayland.windowManager.niri.settings = {
       layout = {
         focus-ring = {
