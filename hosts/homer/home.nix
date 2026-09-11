@@ -10,7 +10,7 @@
       vpn = "proton"; # proton
       bitwarden.enable = true; # password manager (CLI)
 
-      noctalia.enable = true; # for wayland: niri/hyprland ricing
+      desktop-shell = "noctalia"; # noctalia, serpantinum
 
       shell.enable = true; # enable misc zsh configs
       shell.apps.enable = true; # useful cli util

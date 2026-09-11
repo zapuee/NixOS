@@ -13,7 +13,7 @@ in
 {
   options.systemSettings.environment = lib.mkOption {
     type = lib.types.enum environmentNames;
-    default = "plasma";
+    default = "hyprland";
     description = "Choice of DE/WM";
   };
 }

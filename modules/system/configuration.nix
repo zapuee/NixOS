@@ -3,8 +3,12 @@
 {
   config = {
     # Packages
-    environment.systemPackages = with pkgs; [ git gh ];
-
+    environment.systemPackages = with pkgs; [
+      git
+      gh
+      ani-cli # yes ani-cli is genuinly necessary
+      tor-browser # default browser (firefox is main tho)
+    ]; 
     # Locale and TZ
     services.timesyncd.enable = lib.mkDefault true;
     time.timeZone = "America/Chicago";

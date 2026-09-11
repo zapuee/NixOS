@@ -7,15 +7,7 @@
     inputs.noctalia.homeModules.default
   ];
 
-  options = {
-    userSettings.noctalia.enable = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "replacement of many hyprland thangs";
-    };
-  };
-
-  config = lib.mkIf config.userSettings.noctalia.enable {
+  config = lib.mkIf (config.userSettings.desktop-shell == "noctalia") {
     home.file.".config/noctalia/config.toml".source =
       ./${shared.hostname}.toml;
 
