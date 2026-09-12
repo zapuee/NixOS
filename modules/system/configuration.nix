@@ -6,7 +6,6 @@
     environment.systemPackages = with pkgs; [
       git
       gh
-      ani-cli # yes ani-cli is genuinly necessary
       tor-browser # default browser (firefox is main tho)
     ]; 
     # Locale and TZ

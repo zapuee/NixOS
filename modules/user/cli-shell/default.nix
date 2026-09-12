@@ -20,6 +20,18 @@ in
       initContent = ''
         bindkey '^P' up-line-or-history
         bindkey '^N' down-line-or-history
+
+        cd() {
+          if [[ "$1" =~ '^[0-9]+$' ]]; then
+            local path="."
+            for ((i=0; i<$1; i++)); do
+              path="$path/.."
+            done
+            builtin cd "$path"
+          else
+            builtin cd "$@"
+          fi
+        }
       '';
 
       antidote = {

@@ -15,6 +15,13 @@ in
       vlc
       gimp
       krita
+
+      ani-skip
+      ani-cli
+      curl-impersonate # for ani-cli
+      yt-dlp
+      ffmpeg
+      mpv 
     ];
 
   };
