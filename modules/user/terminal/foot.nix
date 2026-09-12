@@ -10,7 +10,7 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [ 
+    home.packages = [
       pkgs.foot
       pkgs.nerd-fonts.lilex
     ];
@@ -21,7 +21,7 @@ in {
       settings = {
         csd = {
           preferred = "client";
-          size = 0; # remove title bar
+          size = 0;
         };
 
         main = {
@@ -31,8 +31,8 @@ in {
           include = "~/.config/foot/themes/noctalia";
         };
 
-        colors = {
-          alpha = ".5";
+        colors-dark = {
+          alpha = 0.5;
         };
 
         scrollback = {

@@ -23,8 +23,11 @@ in
   };
 
   config = {
-    home.packages = with pkgs; [
-      concord-tui
-    ];
+    programs.concord = { # tui discord
+      enable = true;
+      settings = {
+        display.image_protocol = "sixel";
+      };
+    };
   };
 }

@@ -13,7 +13,6 @@
       steam
 
       mangohud
-      winetricks
       gamescope
       gamemode
       vulkan-tools

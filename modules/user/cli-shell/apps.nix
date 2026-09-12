@@ -3,13 +3,14 @@
 let
   cfg = config.userSettings.shell.apps;
 
-  btopPatch = # fix nvidia gpu support
+  btopPatch = # fix gpu not showing
     if osConfig.systemSettings.hardware.gpu == "nvidia" then
       pkgs.btop.overrideAttrs (old: {
         nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.makeWrapper ];
+
         postInstall = (old.postInstall or "") + ''
           wrapProgram $out/bin/btop \
-            --prefix LD_LIBRARY_PATH : /run/opengl-driver/lib
+            --prefix LD_LIBRARY_PATH : "${osConfig.hardware.nvidia.package}/lib"
         '';
       })
     else
