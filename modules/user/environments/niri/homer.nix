@@ -10,6 +10,7 @@
           inactive-color = "#00000000";
           urgent-color = "#00000000";
         };
+
         border.off = {};
       };
     };

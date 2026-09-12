@@ -149,6 +149,27 @@
 
         # Highlight
         highlight = {
+          FlashLabel = {
+            fg = "#1e1e2e";
+            bg = "#89b4fa";
+            bold = true;
+          };
+
+          FlashMatch = {
+            fg = "#cdd6f4";
+            bg = "#45475a";
+          };
+
+          FlashCurrent = {
+            fg = "#1e1e2e";
+            bg = "#a6e3a1";
+            bold = true;
+          };
+
+          FlashBackdrop = {
+            fg = "#585b70";
+          };
+
           IblIndent = {
             fg = "#30353f";
           };

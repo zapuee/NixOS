@@ -171,8 +171,8 @@ in
       # Workspace navigation
       "Mod+Page_Down".focus-workspace-down = {};
       "Mod+Page_Up".focus-workspace-up = {};
-      "Mod+U".focus-workspace-down = {};
-      "Mod+I".focus-workspace-up = {};
+      "Mod+D".focus-workspace-down = {};
+      "Mod+U".focus-workspace-up = {};
 
       "Mod+Ctrl+Page_Down".move-column-to-workspace-down = {};
       "Mod+Ctrl+Page_Up".move-column-to-workspace-up = {};
