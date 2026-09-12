@@ -1,4 +1,4 @@
-{ lib, config, ... }:
+{ pkgs, lib, config, ... }:
 
 let
   # Find every .css file beside this module
@@ -20,5 +20,11 @@ in
       default = "vencord";
       description = "Choose the client";
     };
+  };
+
+  config = {
+    home.packages = with pkgs; [
+      concord-tui
+    ];
   };
 }

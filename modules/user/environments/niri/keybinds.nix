@@ -147,10 +147,10 @@ in
       "Mod+Ctrl+End".move-column-to-last = {};
 
       # Focus monitor
-      "Mod+Shift+Left".focus-monitor-left = {};
-      "Mod+Shift+Down".focus-monitor-down = {};
-      "Mod+Shift+Up".focus-monitor-up = {};
-      "Mod+Shift+Right".focus-monitor-right = {};
+      "Mod+P".focus-monitor-left = {};
+      # "Mod+Shift+Down".focus-monitor-down = {};
+      # "Mod+Shift+Up".focus-monitor-up = {};
+      "Mod+N".focus-monitor-right = {};
 
       "Mod+Shift+H".focus-monitor-left = {};
       "Mod+Shift+J".focus-monitor-down = {};
@@ -158,10 +158,10 @@ in
       "Mod+Shift+L".focus-monitor-right = {};
 
       # Move columns to monitor
-      "Mod+Shift+Ctrl+Left".move-column-to-monitor-left = {};
-      "Mod+Shift+Ctrl+Down".move-column-to-monitor-down = {};
-      "Mod+Shift+Ctrl+Up".move-column-to-monitor-up = {};
-      "Mod+Shift+Ctrl+Right".move-column-to-monitor-right = {};
+      "Mod+Ctrl+P".move-column-to-monitor-left = {};
+      # "Mod+Shift+Ctrl+Down".move-column-to-monitor-down = {};
+      # "Mod+Shift+Ctrl+Up".move-column-to-monitor-up = {};
+      "Mod+Ctrl+N".move-column-to-monitor-right = {};
 
       "Mod+Shift+Ctrl+H".move-column-to-monitor-left = {};
       "Mod+Shift+Ctrl+J".move-column-to-monitor-down = {};
@@ -176,13 +176,13 @@ in
 
       "Mod+Ctrl+Page_Down".move-column-to-workspace-down = {};
       "Mod+Ctrl+Page_Up".move-column-to-workspace-up = {};
-      "Mod+Ctrl+U".move-column-to-workspace-down = {};
-      "Mod+Ctrl+I".move-column-to-workspace-up = {};
+      "Mod+Ctrl+D".move-column-to-workspace-down = {};
+      "Mod+Ctrl+U".move-column-to-workspace-up = {};
 
       "Mod+Shift+Page_Down".move-workspace-down = {};
       "Mod+Shift+Page_Up".move-workspace-up = {};
-      "Mod+Shift+U".move-workspace-down = {};
-      "Mod+Shift+I".move-workspace-up = {};
+      "Mod+Shift+D".move-workspace-down = {};
+      "Mod+Shift+U".move-workspace-up = {};
 
       # Workspace scrolling
       "Mod+WheelScrollDown" = {
