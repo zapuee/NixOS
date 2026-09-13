@@ -1,0 +1,1838 @@
+@-moz-document domain("soundcloud.com") {
+/* =========================================================
+       SOUNDCloud GLASS / WALLPAPER THEME
+       ========================================================= */
+
+    :root {
+        /* -----------------------------------------------------
+           WALLPAPER
+           ----------------------------------------------------- */
+
+        /* Replace with your own direct image URL. */
+        --wallpaper:
+            url("http://127.0.0.1:8080/larps/GoldenLarpaplier.png");
+
+        /* Existing dark overlay over the wallpaper. */
+        --wallpaper-overlay:
+            rgba(0, 0, 0, .5);
+
+        /* Optional second tint over the wallpaper.
+           Use rgba(..., 0) to disable it. */
+        --wallpaper-tint:
+            rgba(0, 0, 0, 0);
+
+        /* Optional wallpaper blur.
+           0px = disabled. */
+        --wallpaper-blur:
+            0px;
+
+        /* When blur is enabled, increasing this helps hide blurred edges. */
+        --wallpaper-scale:
+            1;
+
+        /* -----------------------------------------------------
+           SURFACES
+           ----------------------------------------------------- */
+
+        --header-bg:
+            rgba(0, 0, 0, 0.62);
+
+        --panel-bg:
+            rgba(0, 0, 0, 0.58);
+
+        --card-bg:
+            rgba(0, 0, 0, 0.48);
+
+        --input-bg:
+            rgba(0, 0, 0, 0.52);
+
+        --player-bg:
+            rgba(0, 0, 0, 0.74);
+
+        /* -----------------------------------------------------
+           GLASS
+           ----------------------------------------------------- */
+
+        --blur:
+            14px;
+
+        --small-blur:
+            10px;
+
+        /* -----------------------------------------------------
+           BORDERS
+           ----------------------------------------------------- */
+
+        --border:
+            rgba(255, 255, 255, 0.08);
+
+        --border-hover:
+            rgba(255, 255, 255, 0.14);
+
+        /* -----------------------------------------------------
+           SHADOWS
+           ----------------------------------------------------- */
+
+        --shadow:
+            0 6px 20px rgba(0, 0, 0, 0.28);
+
+        --card-shadow:
+            0 5px 16px rgba(0, 0, 0, 0.32);
+
+        --card-shadow-hover:
+            0 10px 28px rgba(0, 0, 0, 0.42);
+
+        --bar-shadow:
+            0 4px 18px rgba(0, 0, 0, 0.28);
+
+        /* -----------------------------------------------------
+           TEXT
+           ----------------------------------------------------- */
+
+        --text:
+            rgba(255, 255, 255, 0.95);
+
+        --text-soft:
+            rgba(255, 255, 255, 0.82);
+
+        --muted:
+            rgba(255, 255, 255, 0.58);
+
+        --very-muted:
+            rgba(255, 255, 255, 0.38);
+
+        /* -----------------------------------------------------
+           COLORS / GLOWS
+           ----------------------------------------------------- */
+
+        --accent:
+            #ff5500;
+
+        --like:
+            #ff3333;
+
+        --white-glow:
+            rgba(255, 255, 255, 0.25);
+
+        --orange-glow:
+            rgba(255, 85, 0, 0.35);
+
+        --red-glow:
+            rgba(255, 51, 51, 0.35);
+
+        /* -----------------------------------------------------
+           SHAPES
+           ----------------------------------------------------- */
+
+        --radius:
+            8px;
+
+        --card-radius:
+            8px;
+
+        --button-radius:
+            7px;
+
+        /* Extra visual controls */
+        --surface-highlight:
+            rgba(255, 255, 255, 0.045);
+
+        --accent-soft:
+            rgba(255, 85, 0, 0.14);
+
+        --accent-line:
+            rgba(255, 85, 0, 0.65);
+
+        --focus-glow:
+            rgba(255, 85, 0, 0.45);
+
+        /* Shared component controls */
+        --control-bg:
+            rgba(255, 255, 255, 0.055);
+
+        --control-border:
+            rgba(255, 255, 255, 0.07);
+
+        --control-hover-bg:
+            rgba(255, 255, 255, 0.10);
+
+        --control-hover-border:
+            rgba(255, 255, 255, 0.14);
+
+        --dropbar-bg:
+            rgba(0, 0, 0, 0.68);
+
+        --dropbar-border:
+            rgba(255, 255, 255, 0.10);
+
+        --hero-title-bg:
+            rgba(0, 0, 0, 0.52);
+
+        --transition-fast:
+            120ms ease;
+
+        --transition-medium:
+            140ms ease;
+    }
+
+    /* =========================================================
+       WALLPAPER
+       ========================================================= */
+
+    html {
+        min-height: 100% !important;
+        background: #000 !important;
+    }
+
+    body {
+        position: relative !important;
+        isolation: isolate !important;
+        min-height: 100vh !important;
+        color: var(--text) !important;
+        background: transparent !important;
+    }
+
+    /* Wallpaper layer. Blur is disabled by default. */
+    body::before {
+        content: "" !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: -2 !important;
+        pointer-events: none !important;
+
+        background:
+            var(--wallpaper) center center / cover no-repeat !important;
+
+        transform:
+            scale(var(--wallpaper-scale)) !important;
+
+        filter:
+            blur(var(--wallpaper-blur)) !important;
+    }
+
+    /* Dark overlay + optional color tint. */
+    body::after {
+        content: "" !important;
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: -1 !important;
+        pointer-events: none !important;
+
+        background:
+            linear-gradient(
+                var(--wallpaper-overlay),
+                var(--wallpaper-overlay)
+            ),
+            linear-gradient(
+                var(--wallpaper-tint),
+                var(--wallpaper-tint)
+            ) !important;
+    }
+
+    /* =========================================================
+       TRANSPARENT PAGE WRAPPERS
+       ========================================================= */
+
+    main,
+    [role="main"],
+    .l-content,
+    .l-container,
+    .l-main,
+    .l-content-full,
+    .l-tabs,
+    .l-tabs-container {
+        background-color: transparent !important;
+        background-image: none !important;
+    }
+
+    /* =========================================================
+       TOP HEADER
+       ========================================================= */
+
+    header,
+    .header {
+        position: relative !important;
+        background: var(--header-bg) !important;
+        backdrop-filter: blur(var(--blur)) !important;
+        -webkit-backdrop-filter: blur(var(--blur)) !important;
+        border-bottom: 1px solid var(--border) !important;
+        box-shadow: var(--bar-shadow) !important;
+    }
+
+    /* =========================================================
+       HOME / FEED / LIBRARY
+       ========================================================= */
+
+    .header__navWrapper {
+        float: none !important;
+        display: flex !important;
+        align-items: center !important;
+
+        width: max-content !important;
+        height: 38px !important;
+
+        margin: 3px 0 0 0 !important;
+        padding: 0 !important;
+
+        background: rgba(0, 0, 0, 0.52) !important;
+        backdrop-filter: blur(var(--blur)) !important;
+        -webkit-backdrop-filter: blur(var(--blur)) !important;
+
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        box-sizing: border-box !important;
+
+        box-shadow: var(--shadow) !important;
+    }
+
+    .header__navMenu {
+        float: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        width: auto !important;
+        height: 100% !important;
+
+        margin: 0 !important;
+        padding: 2px !important;
+
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .header__navMenu > li,
+    .header__collection-wrapper {
+        float: none !important;
+        display: flex !important;
+        align-items: center !important;
+
+        width: auto !important;
+        height: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .header__navMenuItem,
+    .header__navMenuItem.sc-mr-1x {
+        float: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        flex: 0 0 auto !important;
+        width: auto !important;
+        height: 32px !important;
+
+        margin: 0 !important;
+        padding: 0 10px !important;
+
+        white-space: nowrap !important;
+        color: var(--text-soft) !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 6px !important;
+
+        box-shadow: none !important;
+        transition:
+            background var(--transition-fast),
+            color var(--transition-fast) !important;
+    }
+
+    .header__navMenuItem:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: var(--text) !important;
+    }
+
+    .header__navMenuItem.selected {
+        background: rgba(255, 255, 255, 0.10) !important;
+        color: #fff !important;
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+            0 0 14px var(--accent-soft) !important;
+    }
+
+    /* =========================================================
+       SEARCH / INPUTS
+       ========================================================= */
+
+    input,
+    textarea {
+        background: var(--input-bg) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--button-radius) !important;
+
+        backdrop-filter: blur(var(--small-blur)) !important;
+        -webkit-backdrop-filter: blur(var(--small-blur)) !important;
+
+        box-shadow: var(--shadow) !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--muted) !important;
+    }
+
+    /* =========================================================
+       SIDE NAVIGATION
+       ========================================================= */
+
+    nav.sidebar,
+    .sidebar {
+        background: var(--panel-bg) !important;
+        backdrop-filter: blur(var(--blur)) !important;
+        -webkit-backdrop-filter: blur(var(--blur)) !important;
+
+        border-right: 1px solid var(--border) !important;
+        box-shadow: var(--bar-shadow) !important;
+    }
+
+    /* =========================================================
+       MAIN PANELS
+       ========================================================= */
+
+    .soundList,
+    .listenEngagement,
+    .searchList {
+        background: var(--panel-bg) !important;
+        backdrop-filter: blur(var(--blur)) !important;
+        -webkit-backdrop-filter: blur(var(--blur)) !important;
+
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow) !important;
+    }
+
+    /* =========================================================
+       TRACK / ALBUM CARDS
+       ========================================================= */
+
+    .playableTile {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--card-radius) !important;
+
+        box-shadow: var(--card-shadow) !important;
+        overflow: hidden !important;
+
+        transition:
+            transform 140ms ease,
+            box-shadow var(--transition-medium),
+            border-color var(--transition-medium) !important;
+    }
+
+    .playableTile:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: var(--card-shadow-hover) !important;
+        border-color: var(--border-hover) !important;
+    }
+
+    .playableTile .sound__coverArt {
+        position: relative !important;
+
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        border-radius:
+            var(--card-radius)
+            var(--card-radius)
+            0
+            0 !important;
+
+        overflow: hidden !important;
+    }
+
+    .playableTile .sound__coverArt img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+
+    /* =========================================================
+       TRACK CARD TEXT
+       ========================================================= */
+
+    .playableTile__description {
+        padding: 9px 12px 11px !important;
+        box-sizing: border-box !important;
+        background: transparent !important;
+    }
+
+    .playableTile__descriptionContainer,
+    .playableTile__usernameHeadingContainer {
+        width: 100% !important;
+    }
+
+    .playableTile__mainHeading {
+        display: block !important;
+        width: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        text-align: center !important;
+        color: var(--text) !important;
+
+        font-size: 13px !important;
+        font-weight: 600 !important;
+
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .playableTile__usernameHeading {
+        display: block !important;
+        width: 100% !important;
+
+        margin: 3px 0 0 !important;
+        padding: 0 !important;
+
+        text-align: center !important;
+        color: var(--muted) !important;
+
+        font-size: 12px !important;
+        font-weight: 600 !important;
+
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .playableTile__mainHeadingIcon {
+        margin: 0 4px 0 0 !important;
+        vertical-align: middle !important;
+    }
+
+    .playableTile__mainHeadingIcon svg {
+        width: 13px !important;
+        height: 13px !important;
+    }
+
+    /* =========================================================
+       TRACK CARD PLAY BUTTON
+       ========================================================= */
+
+    .playableTile__playButton .playButton {
+        box-shadow:
+            0 4px 10px rgba(0, 0, 0, 0.40),
+            0 8px 24px rgba(0, 0, 0, 0.30),
+            0 0 12px rgba(255, 255, 255, 0.10) !important;
+    }
+
+    /* White artwork glow while hovering anywhere over the tile,
+       including the play button. */
+    .playableTile:hover .playableTile__image {
+        filter:
+            drop-shadow(0 0 5px rgba(255, 255, 255, 0.50))
+            drop-shadow(0 0 14px rgba(255, 255, 255, 0.28))
+            drop-shadow(0 0 26px rgba(255, 255, 255, 0.14)) !important;
+    }
+
+    /* =========================================================
+       PROFILE / ARTIST CARDS
+       ========================================================= */
+
+    .userBadge,
+    .artistBadge {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--card-radius) !important;
+        box-shadow: var(--card-shadow) !important;
+
+        transition:
+            box-shadow var(--transition-medium),
+            border-color var(--transition-medium) !important;
+    }
+
+    .userBadge:hover,
+    .artistBadge:hover {
+        background-color: var(--surface-highlight) !important;
+        box-shadow: var(--card-shadow-hover) !important;
+        border-color: var(--border-hover) !important;
+    }
+
+    /* =========================================================
+       PROFILE AVATARS
+       ========================================================= */
+
+    .userBadge__avatar {
+        flex: 0 0 48px !important;
+
+        width: 48px !important;
+        height: 48px !important;
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        margin-right: 14px !important;
+    }
+
+    .userBadge__avatar .g-avatar-badge,
+    .userBadge__avatar .g-avatar-badge-body,
+    .userBadge__avatar .g-avatar-badge-avatar-link,
+    .userBadge__avatar .g-avatar-badge-avatar,
+    .userBadge__avatar .image {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        width: 48px !important;
+        height: 48px !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .userBadge__avatar .sc-artwork.image__full {
+        width: 44px !important;
+        height: 44px !important;
+
+        margin: 0 !important;
+
+        border-radius: 50% !important;
+        background-size: cover !important;
+        background-position: center !important;
+    }
+
+    /* =========================================================
+       GENERAL BUTTONS
+       ========================================================= */
+
+    button {
+        background: transparent !important;
+        color: var(--text) !important;
+
+        border: none !important;
+        border-radius: var(--button-radius) !important;
+
+        transition:
+            background var(--transition-fast),
+            color var(--transition-fast),
+            box-shadow var(--transition-fast) !important;
+    }
+
+    button:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    /* =========================================================
+       BOTTOM PLAYER
+       ========================================================= */
+
+    .playControls,
+    .playControls__inner,
+    .playControls__bg {
+        background: var(--player-bg) !important;
+
+        backdrop-filter: blur(var(--blur)) !important;
+        -webkit-backdrop-filter: blur(var(--blur)) !important;
+
+        border-top: 1px solid var(--border) !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+
+        box-shadow:
+            0 -6px 22px rgba(0, 0, 0, 0.30) !important;
+    }
+
+    .playControls__elements,
+    .playControls__inner > *,
+    .playControls__bg > * {
+        background: transparent !important;
+    }
+
+    .playControls svg {
+        color: rgba(255, 255, 255, 0.95) !important;
+        fill: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    .playControls svg path {
+        fill: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    /* =========================================================
+       QUEUE BUTTON
+       ========================================================= */
+
+    .playbackSoundBadge__showQueue {
+        position: relative !important;
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        width: 32px !important;
+        height: 32px !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        box-sizing: border-box !important;
+
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 6px !important;
+
+        box-shadow:
+            0 3px 10px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .playbackSoundBadge__showQueue > div:first-child {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        width: 16px !important;
+        height: 16px !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        line-height: 0 !important;
+    }
+
+    .playbackSoundBadge__showQueue svg {
+        display: block !important;
+
+        width: 16px !important;
+        height: 16px !important;
+
+        margin: 0 !important;
+    }
+
+    .playbackSoundBadge__queueCircle {
+        position: absolute !important;
+
+        top: 4px !important;
+        right: 4px !important;
+
+        margin: 0 !important;
+    }
+
+    /* =========================================================
+       LINKS / TEXT
+       ========================================================= */
+
+    a {
+        color: var(--text) !important;
+    }
+
+    a:hover {
+        color: var(--accent) !important;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: var(--text) !important;
+    }
+
+    .sc-type-light {
+        color: var(--muted) !important;
+    }
+
+    /* Collection navigation — orange glow on hover */
+    .collectionNav .g-tabs-link:hover {
+        color: var(--accent) !important;
+
+        text-shadow:
+            0 0 4px rgba(255, 85, 0, 0.70),
+            0 0 9px rgba(255, 85, 0, 0.40),
+            0 0 16px rgba(255, 85, 0, 0.20) !important;
+    }
+
+    /* =========================================================
+       PLAYBACK PROGRESS
+       ========================================================= */
+
+    .playbackTimeline__progressBar {
+        background: var(--accent) !important;
+
+        box-shadow:
+            0 0 4px rgba(255, 85, 0, 0.75),
+            0 0 10px rgba(255, 85, 0, 0.45),
+            0 0 20px rgba(255, 85, 0, 0.22) !important;
+
+        filter:
+            drop-shadow(0 0 4px rgba(255, 85, 0, 0.55))
+            drop-shadow(0 0 10px rgba(255, 85, 0, 0.30)) !important;
+    }
+
+    .playbackTimeline__progressHandle {
+        background: var(--accent) !important;
+
+        box-shadow:
+            0 0 5px rgba(255, 85, 0, 0.75),
+            0 0 12px rgba(255, 85, 0, 0.40) !important;
+    }
+
+    /* =========================================================
+       SPEED BUTTON
+       ========================================================= */
+
+    #scs-speed-button {
+        color: var(--accent) !important;
+
+        text-shadow:
+            0 0 4px rgba(255, 85, 0, 0.70),
+            0 0 9px rgba(255, 85, 0, 0.40),
+            0 0 16px rgba(255, 85, 0, 0.20) !important;
+    }
+
+    /* =========================================================
+       LIKED HEARTS
+       ========================================================= */
+
+    /* Library / page heart shape. */
+    svg:has(path[d^="M7.88889 3C6.40208 3"]) {
+        color: var(--like) !important;
+        fill: var(--like) !important;
+
+        filter:
+            drop-shadow(0 0 3px rgba(255, 51, 51, 0.65))
+            drop-shadow(0 0 8px rgba(255, 51, 51, 0.40))
+            drop-shadow(0 0 16px rgba(255, 51, 51, 0.20)) !important;
+
+        overflow: visible !important;
+    }
+
+    svg:has(path[d^="M7.88889 3C6.40208 3"]) path {
+        fill: var(--like) !important;
+        filter: none !important;
+    }
+
+    /* Secondary 16px heart variant. */
+    svg:has(path[d^="M7.978 5c.653-1.334"]) {
+        color: var(--like) !important;
+        fill: var(--like) !important;
+
+        filter:
+            drop-shadow(0 0 3px rgba(255, 51, 51, 0.65))
+            drop-shadow(0 0 8px rgba(255, 51, 51, 0.40))
+            drop-shadow(0 0 16px rgba(255, 51, 51, 0.20)) !important;
+
+        overflow: visible !important;
+    }
+
+    svg:has(path[d^="M7.978 5c.653-1.334"]) path {
+        fill: var(--like) !important;
+        filter: none !important;
+    }
+
+    /* =========================================================
+       TRACK PAGE
+       ========================================================= */
+
+    /* Remove the solid black track header. */
+    section[aria-label="Track header"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+
+        border: none !important;
+        box-shadow: none !important;
+
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+
+        border-radius: var(--radius) !important;
+    }
+
+    /* Keep track-header layout wrappers transparent. */
+    section[aria-label="Track header"] > div,
+    section[aria-label="Track header"] > div > div,
+    section[aria-label="Track header"] > div > div > div,
+    section[aria-label="Track header"] > div > div > div > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Track page play button. */
+    section[aria-label="Track header"] button[aria-label="Play"] {
+        position: relative !important;
+
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        min-height: 64px !important;
+
+        padding: 0 !important;
+        margin: 0 !important;
+
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+
+        box-sizing: border-box !important;
+        border-radius: 50% !important;
+
+        background: rgba(0, 0, 0, 0.28) !important;
+        border: 1px solid rgba(255, 255, 255, 0.20) !important;
+
+        color: #fff !important;
+
+        box-shadow:
+            0 0 10px rgba(255, 255, 255, 0.18),
+            0 0 24px rgba(255, 255, 255, 0.10),
+            0 8px 24px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    section[aria-label="Track header"] button[aria-label="Play"] svg {
+        position: absolute !important;
+
+        left: 50% !important;
+        top: 50% !important;
+
+        width: 26px !important;
+        height: 26px !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        transform: translate(-50%, -50%) !important;
+
+        overflow: visible !important;
+        color: #fff !important;
+    }
+
+    /* Optical correction for the asymmetric play triangle. */
+    section[aria-label="Track header"] button[aria-label="Play"] svg path {
+        fill: #fff !important;
+
+        transform-box: fill-box !important;
+        transform-origin: center !important;
+        transform: translateX(-1.58px) !important;
+
+        filter:
+            drop-shadow(0 0 5px rgba(255, 255, 255, 0.25)) !important;
+    }
+
+    /* Track title */
+    section[aria-label="Track header"] h1 {
+        color: var(--text) !important;
+
+        text-shadow:
+            0 1px 8px rgba(0, 0, 0, 0.45) !important;
+    }
+
+    /* Track waveform */
+    section[aria-label="Track header"]
+        [role="slider"][aria-label="Waveform"] {
+            background: transparent !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+    section[aria-label="Track header"]
+        [role="slider"][aria-label="Waveform"] svg {
+            filter:
+                drop-shadow(0 0 3px rgba(255, 255, 255, 0.35))
+                drop-shadow(0 0 8px rgba(255, 255, 255, 0.18))
+                drop-shadow(0 0 18px rgba(255, 255, 255, 0.08)) !important;
+        }
+
+    section[aria-label="Track header"]
+        [role="slider"][aria-label="Waveform"] svg rect {
+            filter:
+                drop-shadow(0 0 2px rgba(255, 255, 255, 0.30)) !important;
+        }
+
+    /* Track artwork */
+    section[aria-label="Track header"] img {
+        border-radius: var(--radius) !important;
+
+        box-shadow:
+            0 0 12px rgba(255, 255, 255, 0.10),
+            0 8px 30px rgba(0, 0, 0, 0.40) !important;
+
+        filter:
+            drop-shadow(0 0 6px rgba(255, 255, 255, 0.15))
+            drop-shadow(0 0 14px rgba(255, 255, 255, 0.10))
+            drop-shadow(0 0 28px rgba(255, 255, 255, 0.05)) !important;
+    }
+
+    /* Track-page pause state: orange icon/button glow. */
+    section[aria-label="Track header"] button[aria-label="Pause"] {
+        color: var(--accent) !important;
+
+        box-shadow:
+            0 0 10px rgba(255, 85, 0, 0.35),
+            0 0 24px rgba(255, 85, 0, 0.20),
+            0 0 42px rgba(255, 85, 0, 0.10),
+            0 8px 24px rgba(0, 0, 0, 0.35) !important;
+
+        border-color:
+            rgba(255, 85, 0, 0.35) !important;
+    }
+
+    section[aria-label="Track header"] button[aria-label="Pause"] svg {
+        color: var(--accent) !important;
+        fill: var(--accent) !important;
+
+        filter:
+            drop-shadow(0 0 5px rgba(255, 85, 0, 0.55))
+            drop-shadow(0 0 12px rgba(255, 85, 0, 0.30)) !important;
+    }
+
+    section[aria-label="Track header"] button[aria-label="Pause"] path {
+        fill: var(--accent) !important;
+    }
+
+    /* =========================================================
+       BOTTOM PLAYER PLAY / PAUSE STATES
+       ========================================================= */
+
+    /* Playing: only the pause symbol glows orange. */
+    button.playControl[aria-label="Pause current"] {
+        color: var(--accent) !important;
+
+        box-shadow: none !important;
+        border-color: transparent !important;
+    }
+
+    button.playControl[aria-label="Pause current"] svg {
+        color: var(--accent) !important;
+        fill: var(--accent) !important;
+
+        filter:
+            drop-shadow(0 0 4px rgba(255, 85, 0, 0.65))
+            drop-shadow(0 0 9px rgba(255, 85, 0, 0.35))
+            drop-shadow(0 0 16px rgba(255, 85, 0, 0.18)) !important;
+    }
+
+    button.playControl[aria-label="Pause current"] path {
+        fill: var(--accent) !important;
+    }
+
+    /* The non-playing state remains white through .playControls. */
+
+    /* =========================================================
+       TRACK-LIST ARTWORK SHADOW
+       ========================================================= */
+
+    .image.image__lightOutline.sc-artwork-20x {
+        box-shadow:
+            0 4px 10px rgba(0, 0, 0, 0.35),
+            0 8px 20px rgba(0, 0, 0, 0.22) !important;
+    }
+
+    /* =========================================================
+       TRACK TITLE PLAY BUTTON — WHITE HOVER GLOW
+       ========================================================= */
+
+    .soundTitle__playButton,
+    .soundTitle__playButton > a,
+    .soundTitle__playButton > a > div,
+    .soundTitle__playButton > a > div > div {
+        overflow: visible !important;
+    }
+
+    .soundTitle__playButton:hover .playButton {
+        box-shadow:
+            0 0 8px rgba(255, 255, 255, 0.45),
+            0 0 18px rgba(255, 255, 255, 0.25),
+            0 0 32px rgba(255, 255, 255, 0.12) !important;
+    }
+
+    /* =========================================================
+       VISUAL POLISH
+       ========================================================= */
+
+    /* Subtle top accent line on the main header. */
+    .header::before {
+        content: "" !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 1px !important;
+
+        background:
+            linear-gradient(
+                90deg,
+                transparent 0%,
+                var(--accent-line) 50%,
+                transparent 100%
+            ) !important;
+
+        opacity: 0.55 !important;
+        pointer-events: none !important;
+    }
+
+    /* Compact sidebar tracks feel more like mini glass cards on hover. */
+    .soundBadge.m-interactive:hover {
+        background: var(--surface-highlight) !important;
+        border-radius: var(--button-radius) !important;
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.24),
+            0 0 14px rgba(255, 255, 255, 0.035) !important;
+    }
+
+    /* Give sidebar section headers a little separation from the content. */
+    .sidebarHeader {
+        transition:
+            color 120ms ease,
+            background 120ms ease,
+            border-color 120ms ease !important;
+    }
+
+    .sidebarHeader:hover {
+        background: rgba(255, 255, 255, 0.035) !important;
+    }
+
+    /* Cleaner hover state for controls without adding a box around icons. */
+    .playableTile__actionButton:hover svg,
+    .soundActions button:hover svg,
+    .header__userNavItem:hover svg {
+        filter:
+            drop-shadow(0 0 4px rgba(255, 255, 255, 0.18)) !important;
+    }
+
+    /* Accent focus ring that matches the rest of the theme. */
+    :where(
+        button,
+        a,
+        input,
+        textarea,
+        [role="button"],
+        [role="slider"]
+    ):focus-visible {
+        outline: 1px solid var(--focus-glow) !important;
+        outline-offset: 2px !important;
+    }
+
+    /* Keep the bottom player visually separated from the page. */
+    .playControls {
+        border-top-color: rgba(255, 255, 255, 0.10) !important;
+    }
+
+    /* =========================================================
+       SCROLLBAR
+       ========================================================= */
+
+    * {
+        scrollbar-color:
+            rgba(255, 255, 255, 0.18)
+            transparent !important;
+    }
+
+    *::-webkit-scrollbar {
+        width: 7px;
+        height: 7px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+    }
+
+    /* =========================================================
+       REDUCE EXCESSIVE ANIMATION
+       ========================================================= */
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+    }
+
+    /* Track list row — shadow on hover */
+    .systemPlaylistTrackList__item:hover {
+        box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.28),
+            0 8px 24px rgba(0, 0, 0, 0.18) !important;
+    }
+
+/* =========================================================
+   PLAYLIST HERO — FINAL
+   ========================================================= */
+
+/* Remove SoundCloud's tan/colored hero background completely */
+.fullListenHero:has(.fullHero__tracksSummary) .backgroundGradient {
+    display: none !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary) {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+/* =========================================================
+   TITLE — SINGLE GLASS PANEL
+   ========================================================= */
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer {
+    display: inline-block !important;
+
+    padding: 10px 14px 11px !important;
+
+    background: rgba(0, 0, 0, 0.52) !important;
+    background-color: rgba(0, 0, 0, 0.52) !important;
+    background-image: none !important;
+
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+
+    box-shadow: var(--shadow) !important;
+    box-sizing: border-box !important;
+}
+
+/* Remove inner gray/black backgrounds */
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer > *,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer h1,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer h1 span,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer h2,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer h2 a,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__titleHeroContainer,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameHeroContainer,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__title,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__username {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Remove pseudo-element backgrounds */
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer *::before,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__usernameTitleContainer *::after {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+/* Title */
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__title {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: var(--text) !important;
+
+    text-shadow:
+        0 1px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Username */
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__username {
+    margin: 4px 0 0 !important;
+    padding: 0 !important;
+
+    color: var(--text-soft) !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__username a {
+    color: var(--text-soft) !important;
+}
+
+/* =========================================================
+   ARTWORK — TIGHT WHITE GLOW
+   ========================================================= */
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .fullHero__artwork .sc-artwork {
+    border-radius: var(--radius) !important;
+
+    filter:
+        drop-shadow(0 0 5px rgba(255, 255, 255, 0.22))
+        drop-shadow(0 4px 10px rgba(0, 0, 0, 0.30)) !important;
+}
+
+/* =========================================================
+   PLAY BUTTON — WHITE GLOW
+   ========================================================= */
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero .playButton {
+    overflow: visible !important;
+
+    color: #fff !important;
+
+    filter:
+        drop-shadow(0 0 5px rgba(255, 255, 255, 0.45))
+        drop-shadow(0 0 12px rgba(255, 255, 255, 0.24))
+        drop-shadow(0 0 22px rgba(255, 255, 255, 0.12)) !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero .playButton svg,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero .playButton path {
+    color: #fff !important;
+    fill: #fff !important;
+}
+
+/* =========================================================
+   PAUSE BUTTON — ORANGE ROUNDED SQUARE
+   ========================================================= */
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero
+    .playButton.sc-button-pause {
+    width: 64px !important;
+    height: 64px !important;
+
+    border-radius: 12px !important;
+
+    color: var(--accent) !important;
+
+    filter: none !important;
+
+    box-shadow:
+        0 0 8px rgba(255, 85, 0, 0.30),
+        0 0 18px rgba(255, 85, 0, 0.16) !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero
+    .playButton.sc-button-pause svg {
+    color: var(--accent) !important;
+    fill: var(--accent) !important;
+
+    filter:
+        drop-shadow(0 0 4px rgba(255, 85, 0, 0.60))
+        drop-shadow(0 0 9px rgba(255, 85, 0, 0.30)) !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .soundTitle__playButtonHero
+    .playButton.sc-button-pause path {
+    fill: var(--accent) !important;
+}
+
+/* =========================================================
+   WAVEFORM — SUBTLE WHITE GLOW
+   ========================================================= */
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .fullHero__waveform,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .waveformWrapper,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .waveformWrapper__waveform,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .waveform,
+.fullListenHero:has(.fullHero__tracksSummary)
+    .waveform__layer {
+    filter:
+        drop-shadow(0 0 3px rgba(255, 255, 255, 0.18))
+        drop-shadow(0 0 7px rgba(255, 255, 255, 0.10)) !important;
+
+    overflow: visible !important;
+}
+
+.fullListenHero:has(.fullHero__tracksSummary)
+    .waveform__scene canvas {
+    filter:
+        drop-shadow(0 0 2px rgba(255, 255, 255, 0.22))
+        drop-shadow(0 0 6px rgba(255, 255, 255, 0.10)) !important;
+
+    overflow: visible !important;
+}
+
+/* Hide Artist tools and its container */
+.sidebarModule:has(
+    iframe.webiEmbeddedModuleIframe[title="Artist tools"]
+) {
+    display: none !important;
+}
+
+/* =========================================================
+   HIDE TOP-BAR PROMOTIONAL LINKS
+   ========================================================= */
+
+.header__fanUpsell,
+.header__creatorUpsell,
+.header__forArtistsButton {
+    display: none !important;
+}
+
+/* Hide "Events near you" */
+.velvetCakeModule {
+    display: none !important;
+}
+
+/* =========================================================
+   USER DROPBAR — GLASS PANEL
+   ========================================================= */
+
+.dropbar {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.dropbar__content {
+    background: var(--dropbar-bg) !important;
+    backdrop-filter: blur(18px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
+
+    border: 1px solid var(--dropbar-border) !important;
+    border-radius: 10px !important;
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.42),
+        0 2px 8px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+
+    overflow: hidden !important;
+}
+
+
+/* =========================================================
+   PROFILE HEADER
+   ========================================================= */
+
+.userDropbar {
+    display: flex !important;
+    align-items: center !important;
+
+    min-height: 58px !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+    box-sizing: border-box !important;
+}
+
+
+/* Avatar */
+.userDropbar .sc-media-image {
+    order: 1 !important;
+    flex: 0 0 auto !important;
+}
+
+.userDropbar .image {
+    flex: 0 0 auto !important;
+
+    border-radius: 50% !important;
+    overflow: hidden !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+
+    box-shadow:
+        0 0 8px rgba(255, 255, 255, 0.10),
+        0 4px 10px rgba(0, 0, 0, 0.30) !important;
+}
+
+
+/* Username */
+.userDropbar .sc-media-content {
+    order: 2 !important;
+
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+
+    margin-left: 10px !important;
+
+    overflow: hidden !important;
+}
+
+.userDropbar__title {
+    display: block !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: var(--text) !important;
+
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    line-height: 1.2 !important;
+
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+
+    text-shadow:
+        0 1px 6px rgba(0, 0, 0, 0.45) !important;
+}
+
+
+
+/* =========================================================
+   ACTION BUTTONS
+   ========================================================= */
+
+.userDropbar__buttons {
+    order: 3 !important;
+
+    flex: 0 0 auto !important;
+
+    margin-left: 12px !important;
+    padding-left: 0 !important;
+}
+
+.userDropbar__buttons .sc-button-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+
+
+/* All dropbar controls */
+.userDropbar__buttons button,
+.userDropbar__buttons a {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    min-width: 32px !important;
+    height: 32px !important;
+
+    margin: 0 !important;
+    padding: 0 9px !important;
+
+    background: var(--control-bg) !important;
+    border: 1px solid var(--control-border) !important;
+    border-radius: 7px !important;
+
+    color: var(--text-soft) !important;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.18) !important;
+
+    transition:
+        background 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease,
+        box-shadow 120ms ease,
+        transform 120ms ease !important;
+}
+
+
+/* Icon-only controls */
+.userDropbar__buttons
+.sc-button-message,
+.userDropbar__buttons
+.sc-button-more {
+    width: 32px !important;
+    padding: 0 !important;
+}
+
+
+/* Icons */
+.userDropbar__buttons svg {
+    width: 16px !important;
+    height: 16px !important;
+
+    color: var(--text-soft) !important;
+    fill: currentColor !important;
+
+    transition:
+        color 120ms ease,
+        filter 120ms ease !important;
+}
+
+
+/* =========================================================
+   HOVER
+   ========================================================= */
+
+.userDropbar__buttons button:hover,
+.userDropbar__buttons a:hover {
+    background: var(--control-hover-bg) !important;
+    border-color: var(--control-hover-border) !important;
+
+    color: #fff !important;
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.25),
+        0 0 10px rgba(255, 255, 255, 0.04) !important;
+
+    transform: translateY(-1px) !important;
+}
+
+.userDropbar__buttons button:hover svg,
+.userDropbar__buttons a:hover svg {
+    color: #fff !important;
+
+    filter:
+        drop-shadow(0 0 4px rgba(255, 255, 255, 0.20)) !important;
+}
+
+
+/* =========================================================
+   FOLLOW — ACCENT BUTTON
+   ========================================================= */
+
+.userDropbar__buttons .sc-button-follow {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+
+    box-shadow:
+        0 3px 10px rgba(255, 85, 0, 0.24) !important;
+}
+
+.userDropbar__buttons .sc-button-follow svg {
+    color: #fff !important;
+    fill: #fff !important;
+}
+
+.userDropbar__buttons .sc-button-follow:hover {
+    background: #ff6417 !important;
+    border-color: #ff6417 !important;
+
+    box-shadow:
+        0 4px 14px rgba(255, 85, 0, 0.34),
+        0 0 12px rgba(255, 85, 0, 0.16) !important;
+}
+
+
+/* =========================================================
+   DROPDOWN ANIMATION
+   ========================================================= */
+
+.dropbar.m-active .dropbar__content {
+    animation:
+        dropbar-in 140ms ease-out !important;
+}
+
+@keyframes dropbar-in {
+    from {
+        opacity: 0;
+        transform: translateY(-5px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =========================================================
+   PROFILE AVATAR — FULL SHADOW / NO CLIPPING
+   ========================================================= */
+
+/* Open every profile-header container so the shadow can escape. */
+.l-user-hero,
+.profileHeader,
+.profileHeader__info,
+.profileHeaderInfo,
+.profileHeaderInfo__avatar {
+    overflow: visible !important;
+
+    clip-path: none !important;
+    contain: none !important;
+}
+
+/* The actual 198px avatar. */
+.profileHeaderInfo__avatar
+.image.image__noOutline.interactive {
+    position: relative !important;
+
+    width: 198px !important;
+    height: 198px !important;
+
+    overflow: visible !important;
+    clip-path: none !important;
+
+    border-radius: 50% !important;
+
+    box-shadow:
+        0 8px 16px rgba(0, 0, 0, 0.45),
+        0 16px 32px rgba(0, 0, 0, 0.28),
+        0 0 18px rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Keep the artwork circular. */
+.profileHeaderInfo__avatar
+.image.image__noOutline.interactive
+.sc-artwork.image__rounded.image__full {
+    display: block !important;
+
+    width: 198px !important;
+    height: 198px !important;
+
+    border-radius: 50% !important;
+    overflow: visible !important;
+    clip-path: none !important;
+}
+
+/* =========================================================
+   PROFILE HEADER — TEXT GLASS LABELS
+   ========================================================= */
+
+/* Username */
+.profileHeaderInfo__userName {
+    display: inline-block !important;
+
+    margin: 0 !important;
+    padding: 6px 9px !important;
+
+    background: rgba(0, 0, 0, 0.58) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 6px !important;
+
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+
+    color: var(--text) !important;
+
+    text-shadow:
+        0 1px 6px rgba(0, 0, 0, 0.45) !important;
+}
+
+
+/* Location */
+.profileHeaderInfo__additional.g-type-shrinkwrap-large-secondary {
+    display: inline-block !important;
+
+    margin-top: 7px !important;
+    padding: 5px 8px !important;
+
+    background: rgba(0, 0, 0, 0.50) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 5px !important;
+
+    box-shadow:
+        0 3px 10px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.025) !important;
+
+    color: var(--text-soft) !important;
+
+    text-shadow:
+        0 1px 5px rgba(0, 0, 0, 0.40) !important;
+}
+
+
+/* Keep the creator badge from inheriting the label styling. */
+.profileHeaderInfo__additional:not(.g-type-shrinkwrap-large-secondary) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Artwork shadow */
+.soundBadge__artwork .image {
+    filter:
+        drop-shadow(0 4px 8px rgba(0, 0, 0, 0.38))
+        drop-shadow(0 8px 16px rgba(0, 0, 0, 0.20)) !important;
+
+    overflow: visible !important;
+}
+
+/* =========================================================
+   LIKE BUTTONS / LIKE COUNTS
+   ========================================================= */
+
+/* Actual Like controls: white when unliked, red when liked. */
+button.sc-button-like:not(.sc-button-selected),
+button.sc-button-like[aria-label="Like"],
+button.playbackSoundBadge__like:not([aria-label="Unlike"]) {
+    color: #fff !important;
+}
+
+button.sc-button-like:not(.sc-button-selected) svg,
+button.sc-button-like[aria-label="Like"] svg,
+button.playbackSoundBadge__like:not([aria-label="Unlike"]) svg {
+    color: #fff !important;
+    fill: #fff !important;
+    filter: none !important;
+}
+
+button.sc-button-like:not(.sc-button-selected) svg path,
+button.sc-button-like[aria-label="Like"] svg path,
+button.playbackSoundBadge__like:not([aria-label="Unlike"]) svg path {
+    fill: #fff !important;
+    filter: none !important;
+}
+
+/* Liked controls. */
+button.sc-button-like.sc-button-selected,
+button.sc-button-like[aria-label="Unlike"],
+button.playbackSoundBadge__like[aria-label="Unlike"] {
+    color: var(--like) !important;
+}
+
+button.sc-button-like.sc-button-selected svg,
+button.sc-button-like[aria-label="Unlike"] svg,
+button.playbackSoundBadge__like[aria-label="Unlike"] svg {
+    color: var(--like) !important;
+    fill: var(--like) !important;
+
+    filter:
+        drop-shadow(0 0 3px rgba(255, 51, 51, 0.65))
+        drop-shadow(0 0 8px rgba(255, 51, 51, 0.40))
+        drop-shadow(0 0 16px rgba(255, 51, 51, 0.20)) !important;
+
+    overflow: visible !important;
+}
+
+button.sc-button-like.sc-button-selected svg path,
+button.sc-button-like[aria-label="Unlike"] svg path,
+button.playbackSoundBadge__like[aria-label="Unlike"] svg path {
+    fill: var(--like) !important;
+}
+
+/* Like-count hearts. */
+a.sc-ministats-likes > div > svg {
+    color: #fff !important;
+    fill: #fff !important;
+    filter: none !important;
+}
+
+a.sc-ministats-likes > div > svg path {
+    fill: #fff !important;
+    filter: none !important;
+}
+
+
+}
