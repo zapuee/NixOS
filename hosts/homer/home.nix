@@ -36,5 +36,23 @@
     home.homeDirectory = "/home/" + shared.username;
   
     home.stateVersion = "26.05";
+
+    # host some wallpapers (for stylus)
+    systemd.user.services.wallpaper-server = {
+      Unit = {
+        Description = "Local wallpaper server";
+      };
+
+      Service = {
+        ExecStart = "${pkgs.python3}/bin/python -m http.server 8080 --bind 127.0.0.1";
+        WorkingDirectory = "%h/Pictures/Wallpapers";
+        Restart = "on-failure";
+      };
+
+      Install = {
+        WantedBy = [ "default.target" ];
+      };
+    };
+
   };
 }

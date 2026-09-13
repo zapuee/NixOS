@@ -11,9 +11,14 @@
         ${inputs.noctalia.packages.${pkgs.system}.default}/bin/noctalia firefox-theme install
       '';
 
+    home.packages = with pkgs; [
+      firefoxpwa
+    ];
+
     programs.firefox = {
       enable = true;
       package = pkgs.firefox;
+      nativeMessagingHosts = [ pkgs.firefoxpwa ];
       
       policies = {
 	DisableTelemetry = true;
