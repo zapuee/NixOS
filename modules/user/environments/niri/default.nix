@@ -8,6 +8,8 @@ in
     home.packages = with pkgs; [
       grim
       slurp
+      wayland
+      libxkbcommon
     ];
 
     wayland.windowManager.niri = {
