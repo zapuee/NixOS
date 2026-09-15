@@ -20,6 +20,7 @@
 
       programming-cli.enable = true; # stuff like cargo and whatnot
 
+      obsidian.enable = true; # for note taking
       media.enable = true; # media-players like vlc
       spicetify.enable = true; # spotify but cooler
       

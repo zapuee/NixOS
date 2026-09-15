@@ -22,6 +22,7 @@
 
       media.enable = true; # media-players like vlc
       spicetify.enable = true; # spotify but cooler
+      obsidian.enable = true; # for note taking
       
       starship.enable = true; # for cool terminal thoing
       starship.style = "grayscale"; # list is in the starship directory

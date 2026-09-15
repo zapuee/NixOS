@@ -1,4 +1,4 @@
-{ lib, config, inputs, ... }:
+{ lib, config, inputs, pkgs, ... }:
 
 {
   imports = [
@@ -144,6 +144,45 @@
               "<C-n>" = [ "select_next" ];
               "<C-p>" = [ "select_prev" ];
             };
+          };
+        };
+
+        extraPlugins = {
+          tiny-inline-diagnostic = {
+            package = pkgs.vimPlugins.tiny-inline-diagnostic-nvim;
+            setup = ''
+              require("tiny-inline-diagnostic").setup({
+                preset = "modern",
+                options = {
+                  show_source = {
+                    enabled = true,
+                  },
+        
+                  multilines = {
+                    enabled = true,
+                    always_show = true,
+                  },
+        
+                  overflow = {
+                    mode = "wrap",
+                  },
+        
+                  add_messages = {
+                    display_count = true,
+                  },
+        
+                  throttle = 0,
+        
+                  virt_texts = {
+                    priority = 2048,
+                  },
+                },
+              })
+              vim.diagnostic.config({
+                virtual_text = false,
+                underline = true,
+              })
+            '';
           };
         };
 
