@@ -47,19 +47,33 @@
             clang
             lld
       
+            vulkan-loader
+            vulkan-tools
+      
             wayland
             libxkbcommon
+            libx11
+            libxcursor
+            libxi
+            libxrandr
             alsa-lib
             udev
             xkeyboard_config
           ];
       
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
-            pkgs.wayland
-            pkgs.libxkbcommon
-            pkgs.alsa-lib
-            pkgs.udev
-          ];
+          LD_LIBRARY_PATH =
+            pkgs.lib.makeLibraryPath [
+              pkgs.vulkan-loader
+              pkgs.wayland
+              pkgs.libxkbcommon
+              pkgs.libx11
+              pkgs.libxcursor
+              pkgs.libxi
+              pkgs.libxrandr
+              pkgs.alsa-lib
+              pkgs.udev
+            ]
+            + ":/run/opengl-driver/lib";
       
           XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/etc/X11/xkb";
         };
