@@ -36,5 +36,34 @@
       imports = [
         ./flake/hosts.nix
       ];
+
+      perSystem = { pkgs, ... }: {
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            cargo
+            rustc
+            rust-analyzer
+            pkg-config
+            clang
+            lld
+      
+            wayland
+            libxkbcommon
+            alsa-lib
+            udev
+            xkeyboard_config
+          ];
+      
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+            pkgs.wayland
+            pkgs.libxkbcommon
+            pkgs.alsa-lib
+            pkgs.udev
+          ];
+      
+          XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/etc/X11/xkb";
+        };
+      };
+
     };
 }
