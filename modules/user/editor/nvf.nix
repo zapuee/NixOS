@@ -68,6 +68,19 @@
             servers = [ "rust-analyzer" ];
           };
         };
+        
+        lsp.servers."rust-analyzer".settings."rust-analyzer" = {
+          cargo = {
+            allTargets = false;
+          };
+          check = {
+            allTargets = false;
+          };
+          cachePriming = {
+            enable = true;
+            numThreads = 4;
+          };
+        };
 
         # Neo-tree
         filetree.neo-tree = {
@@ -88,6 +101,15 @@
         fzf-lua.enable = true;
 
         utility.surround.enable = true;
+
+        terminal.toggleterm = {
+          enable = true;
+
+          setupOpts = {
+            direction = "horizontal";
+            size = 12;
+          };
+        };
 
         # lsp info
         visuals.fidget-nvim.enable = true;
@@ -136,6 +158,12 @@
           enable = true;
 
           setupOpts = {
+            fuzzy = {
+              implementation = "rust";
+              prebuilt_binaries = {
+                download = false;
+              };
+            };
             completion.menu.border = "rounded";
 
             keymap = {
@@ -147,43 +175,32 @@
           };
         };
 
-        extraPlugins = {
-          tiny-inline-diagnostic = {
-            package = pkgs.vimPlugins.tiny-inline-diagnostic-nvim;
-            setup = ''
-              require("tiny-inline-diagnostic").setup({
-                preset = "modern",
-                options = {
-                  show_source = {
-                    enabled = true,
-                  },
-        
-                  multilines = {
-                    enabled = true,
-                    always_show = true,
-                  },
-        
-                  overflow = {
-                    mode = "wrap",
-                  },
-        
-                  add_messages = {
-                    display_count = true,
-                  },
-        
-                  throttle = 0,
-        
-                  virt_texts = {
-                    priority = 2048,
-                  },
-                },
-              })
-              vim.diagnostic.config({
-                virtual_text = false,
-                underline = true,
-              })
-            '';
+        lazy.plugins."${pkgs.vimPlugins.tiny-inline-diagnostic-nvim.pname}" = {
+          package = pkgs.vimPlugins.tiny-inline-diagnostic-nvim;
+          event = [ "LspAttach" ];
+          setupModule = "tiny-inline-diagnostic";
+          setupOpts = {
+            preset = "modern";
+            options = {
+              show_source.enabled = true;
+              multilines = {
+                enabled = true;
+                always_show = false;
+              };
+              overflow.mode = "wrap";
+              add_messages.display_count = true;
+              throttle = 50;
+              virt_texts.priority = 2048;
+            };
           };
+          after = ''
+            vim.diagnostic.config({
+              virtual_text = false,
+              underline = true,
+              update_in_insert = false,
+              severity_sort = true,
+            })
+          '';
         };
 
         # Highlight
@@ -319,9 +336,21 @@
         globals = {
           mapleader = "\\";
           maplocalleader = "\\";
+
+          loaded_node_provider = 0;
+          loaded_perl_provider = 0;
+          loaded_ruby_provider = 0;
+          loaded_python3_provider = 0;
         };
 
         keymaps = [
+          {
+            mode = [ "n" "t" ];
+            key = "<leader>t";
+            action = "<cmd>ToggleTerm<CR>";
+            desc = "Toggle Terminal";
+          }
+          
           {
             key = "t";
             mode = "n";
@@ -341,14 +370,37 @@
             action = "<cmd>lua vim.diagnostic.open_float()<CR>";
             desc = "Show current diagnostic";
           }
+
+          {
+            mode = "n";
+            key = "<leader>ff";
+            action = "<cmd>FzfLua files<CR>";
+            desc = "Find Files";
+          }
+        
+          {
+            mode = "n";
+            key = "<leader>fg";
+            action = "<cmd>FzfLua live_grep<CR>";
+            desc = "Live Grep";
+          }
+        
+          {
+            mode = "n";
+            key = "<leader>fb";
+            action = "<cmd>FzfLua buffers<CR>";
+            desc = "Find Buffers";
+          }
+        
+          {
+            mode = "n";
+            key = "<leader>fh";
+            action = "<cmd>FzfLua help_tags<CR>";
+            desc = "Help Tags";
+          }
         ];
 
         luaConfigPost = ''
-          vim.g.loaded_node_provider = 0
-          vim.g.loaded_perl_provider = 0
-          vim.g.loaded_ruby_provider = 0
-          vim.g.loaded_python3_provider = 0
-
           vim.keymap.set("n", "<Tab>", function()
             local row, col = unpack(vim.api.nvim_win_get_cursor(0))
             local indent = string.rep(" ", vim.bo.shiftwidth)
@@ -365,15 +417,7 @@
             vim.api.nvim_win_set_cursor(0, { row, col + #indent })
           end)
 
-          -- fzf-lua
-          local fzf = require("fzf-lua")
-
-          vim.keymap.set("n", "<leader>ff", fzf.files, { desc = "Find Files" })
-          vim.keymap.set("n", "<leader>fg", fzf.live_grep, { desc = "Live Grep" })
-          vim.keymap.set("n", "<leader>fb", fzf.buffers, { desc = "Find Buffers" })
-          vim.keymap.set("n", "<leader>fh", fzf.help_tags, { desc = "Help Tags" })
-
-          vim.keymap.set("n", "<leader>t", "<cmd>Neotree toggle<CR>", {
+          vim.keymap.set("n", "<leader>n", "<cmd>Neotree toggle<CR>", {
             desc = "Neo-tree",
           })
         '';
