@@ -74,7 +74,9 @@
               pkgs.udev
             ]
             + ":/run/opengl-driver/lib";
-      
+
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "clang";
+          RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
           XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/etc/X11/xkb";
         };
       };

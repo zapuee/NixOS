@@ -166,11 +166,72 @@
             };
             completion.menu.border = "rounded";
 
+            signature = {
+              enabled = true;
+              trigger = {
+                enabled = false;
+              };
+              window = {
+                show_documentation = false;
+              };
+            };
+
             keymap = {
               preset = "default";
-
               "<C-n>" = [ "select_next" ];
               "<C-p>" = [ "select_prev" ];
+              "<S-CR>" = [
+                (lib.generators.mkLuaInline ''
+                  function(cmp)
+                    local item = cmp.get_selected_item()
+                    if not item then
+                      return false
+                    end
+              
+                    local text_edits = require("blink.cmp.lib.text_edits")
+                    local edit = text_edits.get_from_item(item)
+              
+                    local kinds = vim.lsp.protocol.CompletionItemKind
+              
+                    local callable =
+                      item.kind == kinds.Function
+                      or item.kind == kinds.Method
+                      or item.kind == kinds.Constructor
+              
+                    local label = item.label or ""
+                    local filter = item.filterText
+              
+                    local text = label
+              
+                    if filter
+                      and filter ~= ""
+                      and label:find(filter, 1, true)
+                    then
+                      text = filter
+                    end
+              
+                    if callable then
+                      text = text:gsub("%s*%b()%s*$", "")
+                    end
+              
+                    edit.newText = text
+              
+                    cmp.cancel({
+                      callback = function()
+                        text_edits.apply(edit)
+              
+                        vim.api.nvim_win_set_cursor(0, {
+                          edit.range.start.line + 1,
+                          edit.range.start.character + #text,
+                        })
+                      end,
+                    })
+              
+                    return true
+                  end
+                '')
+                "fallback"
+              ];
             };
           };
         };
@@ -397,6 +458,19 @@
             key = "<leader>fh";
             action = "<cmd>FzfLua help_tags<CR>";
             desc = "Help Tags";
+          }
+
+          {
+            key = "\\h";
+            mode = "n";
+            action = ''
+              function()
+                local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
+                vim.lsp.inlay_hint.enable(not enabled, { bufnr = 0 })
+              end
+            '';
+            lua = true;
+            desc = "Toggle LSP hints";
           }
         ];
 
