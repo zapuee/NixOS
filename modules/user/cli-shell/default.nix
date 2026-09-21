@@ -1,5 +1,6 @@
 { config, lib, pkgs, ... }:
 
+
 let
   cfg = config.userSettings.shell;
 in
@@ -18,9 +19,21 @@ in
       autosuggestion.enable = true;
         
       initContent = ''
+        zmodload -i zsh/complist
+      
+        # Make Tab enter an actual selectable completion menu
+        setopt MENU_COMPLETE
+        zstyle ':completion:*' menu select
+      
+        # Only active while that selectable menu is open
+        bindkey -M menuselect '^H' backward-char
+        bindkey -M menuselect '^L' forward-char
+        bindkey -M menuselect '^K' reverse-menu-complete
+        bindkey -M menuselect '^J' menu-complete
+      
         bindkey '^P' up-line-or-history
         bindkey '^N' down-line-or-history
-
+      
         cd() {
           if [[ "$1" =~ '^[0-9]+$' ]]; then
             local path="."
