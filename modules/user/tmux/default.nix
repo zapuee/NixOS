@@ -18,7 +18,7 @@ let
           (lib.removeSuffix ".yml" name);
       in
         lib.nameValuePair
-          ".config/tmuxinator/${projectName}.yml"
+          ".config/tmuxp/${projectName}.yaml"
           {
             source = ./. + "/${name}";
           }
@@ -31,7 +31,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    programs.tmux.tmuxinator.enable = true;
+    home.packages = [
+      pkgs.tmuxp
+    ];
+
     home.file = projects;
 
     programs.tmux = {

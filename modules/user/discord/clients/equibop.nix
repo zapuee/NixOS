@@ -30,7 +30,7 @@ in
 
       equicord = {
         settings = {
-          enabledThemes = enabledThemes;
+          enabledThemes = [ "system24.css" ];
           autoUpdate = false;
           notifyAboutUpdates = true;
           useQuickCss = true;

@@ -33,7 +33,7 @@ in
           notifyAboutUpdates = true;
           useQuickCss = true;
 
-          enabledThemes = enabledThemes;
+          enabledThemes = ["system24.css"];
 
           plugins = {
             FakeNitro.enabled = true;
