@@ -64,6 +64,17 @@ function resolver.number(
     return value, nil
 end
 
+function resolver.float(value)
+    if type(value) ~= "number" then
+        return tostring(value)
+    end
+
+    -- KDL distinguishes integers from floating-point values.
+    -- Niri requires some properties, such as opacity, to be
+    -- represented as floats even when their value is 0 or 1.
+    return string.format("%.6f", value)
+end
+
 function resolver.tier(
     variables,
     selector,

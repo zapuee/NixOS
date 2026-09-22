@@ -1,0 +1,190 @@
+name = "paper"
+
+description = "Opaque, flat paper-like structure profile"
+
+
+# ============================================================
+# SHARED STYLE VARIABLES
+#
+# Applications reference tiered values with:
+#   "primary"
+#   "secondary"
+#   "tertiary"
+#
+# Non-tiered shared values use:
+#   "default"
+# ============================================================
+
+[variables]
+
+
+# ============================================================
+# BACKGROUND OPACITY
+#
+# Paper surfaces are fully opaque.
+# ============================================================
+
+primary_bg_opacity = 1.00
+secondary_bg_opacity = 1.00
+tertiary_bg_opacity = 1.00
+
+
+# ============================================================
+# FOCUS RING
+# ============================================================
+
+focus_ring_width = 4
+
+focus_ring_active_opacity = 0.20
+focus_ring_inactive_opacity = 1.00
+focus_ring_urgent_opacity = 1.00
+
+
+# ============================================================
+# CORNER RADIUS
+#
+# Paper uses essentially square geometry.
+# ============================================================
+
+primary_corner_radius = 0
+secondary_corner_radius = 0
+
+
+# ============================================================
+# MATERIAL
+# ============================================================
+
+preferred_material = "solid"
+
+
+# ============================================================
+# LAYOUT
+#
+# Slightly tighter than the glass profile.
+# ============================================================
+
+gaps = 8
+outer_gaps = 8
+
+
+# ============================================================
+# EFFECTS
+# ============================================================
+
+shadow_strength = 0.5
+
+
+
+# ============================================================
+# NIRI / WINDOW MANAGER
+# ============================================================
+
+[applications.niri]
+
+enabled = true
+
+
+# ------------------------------------------------------------
+# Window geometry
+# ------------------------------------------------------------
+
+corner_radius = "primary"
+
+
+# ------------------------------------------------------------
+# Layout
+# ------------------------------------------------------------
+
+gaps = "default"
+outer_gaps = "default"
+
+
+# ------------------------------------------------------------
+# Focus ring
+# ------------------------------------------------------------
+
+focus_ring_width = "default"
+
+focus_ring_active_opacity = "default"
+focus_ring_inactive_opacity = "default"
+focus_ring_urgent_opacity = "default"
+
+focus_ring_active_color = "color.primary"
+focus_ring_inactive_color = "color.outline"
+focus_ring_urgent_color = "color.error"
+
+
+# ------------------------------------------------------------
+# Shadow
+# ------------------------------------------------------------
+
+shadow_strength = "default"
+shadow_color = "color.shadow"
+
+
+
+# ============================================================
+# FIREFOX
+# ============================================================
+
+[applications.firefox]
+
+enabled = true
+
+background_opacity = "primary"
+
+blur = false
+
+corner_radius = "primary"
+
+material = "preferred"
+
+accent_color = "color.primary"
+
+
+
+# ============================================================
+# TERMINAL
+# ============================================================
+
+[applications.terminal]
+
+enabled = true
+target = "foot"
+
+
+# ------------------------------------------------------------
+# Transparency
+# ------------------------------------------------------------
+
+background_opacity = "primary"
+
+
+# ------------------------------------------------------------
+# Compositor effects
+# ------------------------------------------------------------
+
+blur = false
+
+corner_radius = "primary"
+
+material = "preferred"
+
+
+# ------------------------------------------------------------
+# Layout
+#
+# Not wired into Foot yet.
+# ------------------------------------------------------------
+
+gaps = "default"
+
+
+# ------------------------------------------------------------
+# Wallpaper-derived colors
+#
+# Not wired into Foot yet.
+# ------------------------------------------------------------
+
+cursor_color = "color.primary"
+selection_color = "color.secondary"

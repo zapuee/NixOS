@@ -57,7 +57,7 @@ local function writeWindowRule(
         table.insert(
             lines,
             "    opacity "
-                .. tostring(opacity)
+                .. resolver.float(opacity)
         )
     end
 
