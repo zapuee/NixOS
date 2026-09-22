@@ -47,7 +47,7 @@
           };
         };
 
-        # Lua language
+        # Lua/Luau language
         languages.lua = {
           enable = true;
           treesitter.enable = true;
@@ -55,6 +55,24 @@
           lsp = {
             enable = true;
             servers = [ "lua-language-server" ];
+          };
+        };
+        lsp = {
+          enable = true;
+          servers.luau-lsp = {
+            cmd = [
+              (lib.getExe pkgs.luau-lsp)
+              "lsp"
+            ];
+
+            filetypes = [
+              "luau"
+            ];
+
+            root_markers = [
+              ".git"
+              ".luaurc"
+            ];
           };
         };
 

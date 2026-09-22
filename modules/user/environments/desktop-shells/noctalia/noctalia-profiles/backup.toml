@@ -370,7 +370,7 @@ builtin = "Noctalia"
 community_palette = "Monochrome"
 mode = "dark"
 source = "wallpaper"
-wallpaper_scheme = "muted"
+wallpaper_scheme = "m3-fruit-salad"
 
     [theme.templates]
     builtin_ids = [ "alacritty", "btop", "foot", "kitty", "niri", "starship" ]
@@ -398,16 +398,16 @@ transition = []
     interval_seconds = 15
 
     [wallpaper.default]
-    path = "/home/zap/Pictures/Wallpapers/larps/yi21uic02jhb1.png"
+    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
 
     [wallpaper.last]
-    path = "/home/zap/Pictures/Wallpapers/larps/yi21uic02jhb1.png"
+    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
 
     [wallpaper.monitors.DP-3]
-    path = "/home/zap/Pictures/Wallpapers/larps/yi21uic02jhb1.png"
+    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
 
     [wallpaper.monitors.DP-4]
-    path = "/home/zap/Pictures/Wallpapers/larps/yi21uic02jhb1.png"
+    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
 
 [widget.audio_visualizer]
 anchor = true

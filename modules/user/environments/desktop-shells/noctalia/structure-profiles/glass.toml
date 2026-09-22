@@ -1,0 +1,84 @@
+name = "glass"
+description = "Transparent rounded desktop with strong blur"
+
+
+# ============================================================
+# STYLE VARIABLES
+# ============================================================
+
+[variables]
+
+# Background opacity
+primary_bg_opacity = 0.82
+secondary_bg_opacity = 0.72
+tertiary_bg_opacity = 0.62
+
+# Background blur
+primary_bg_blur = 20
+secondary_bg_blur = 14
+tertiary_bg_blur = 8
+
+# Geometry
+primary_corner_radius = 16
+secondary_corner_radius = 10
+tertiary_corner_radius = 7
+
+# Material
+preferred_material = "glass"
+
+# Layout
+gaps = 8
+outer_gaps = 12
+border_width = 2
+
+# Effects
+shadow_strength = 0.35
+
+
+# ============================================================
+# NIRI
+# ============================================================
+
+[applications.niri]
+enabled = true
+
+window_opacity = "primary"
+corner_radius = "primary"
+
+gaps = "default"
+outer_gaps = "default"
+
+border_width = "default"
+
+border_active_color = "primary"
+border_inactive_color = "inactive"
+border_urgent_color = "urgent"
+
+
+# ============================================================
+# FIREFOX
+# ============================================================
+
+[applications.firefox]
+enabled = true
+
+background_opacity = "secondary"
+blur = "secondary"
+corner_radius = "primary"
+material = "preferred"
+
+
+# ============================================================
+# TERMINAL
+# ============================================================
+
+[applications.terminal]
+enabled = true
+target = "foot"
+
+background_opacity = "primary"
+blur = "primary"
+corner_radius = "primary"
+material = "preferred"
+
+gaps = "default"

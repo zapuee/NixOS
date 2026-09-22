@@ -1,0 +1,21 @@
+id = "zap/theme-manager"
+name = "Theme Manager"
+version = "0.1.0"
+plugin_api = 3
+author = "zap"
+
+icon = "palette"
+description = "Manage desktop theme profiles."
+
+[[widget]]
+id = "theme"
+entry = "widget.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+
+width = 420
+height = 360
+placement = "floating"
+position = "center"
