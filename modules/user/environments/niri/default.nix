@@ -14,6 +14,10 @@ in
 
     wayland.windowManager.niri = {
       enable = true;
+      extraConfig = ''
+        include optional=true "~/.config/theme-manager/niri.kdl"
+        include optional=true "~/.config/theme-manager/niri-colors.kdl"
+      '';
 
       settings = {
         prefer-no-csd = {};
