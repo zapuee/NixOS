@@ -15,7 +15,7 @@ order = [ "default" ]
     capsule_padding = 5.0
     capsule_radius = 0
     capsule_thickness = 0.99999998137354851
-    center = [ "bar", "group:g1", "nightlight" ]
+    center = [ "bar", "group:g1", "nightlight", "theme" ]
     concave_edge_corners = false
     contact_shadow = true
     end = [ "media", "tray", "notifications", "clipboard", "volume", "brightness", "control-center", "session" ]
@@ -29,7 +29,7 @@ order = [ "default" ]
     scale = 0.85000000521540642
     shadow = true
     smart_auto_hide = false
-    start = [ "widget", "wallpaper", "bar_2", "keybinds", "bluetooth", "battery", "workspaces", "privacy" ]
+    start = [ "wallpaper", "bar_2", "keybinds", "bluetooth", "battery", "workspaces", "privacy" ]
     thickness = 18
     widget_spacing = 4
 
@@ -232,7 +232,7 @@ up = [ "Up", "Ctrl+k" ]
 
 [location]
 address = "GrandPrairie TX"
-sunrise = "7:30"
+sunrise = "07:30"
 sunset = "20:30"
 
 [lockscreen_widgets]
@@ -321,7 +321,7 @@ enabled = [
     "noctalia/wallpaper_depth",
     "dunarand/tmux-provider",
     "cleboost/ssh-launcher",
-    "tadomika_ari/config-swap"
+    "zap/theme-manager"
 ]
 
 [shell]
@@ -398,16 +398,16 @@ transition = []
     interval_seconds = 15
 
     [wallpaper.default]
-    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
+    path = "/home/zap/Pictures/Wallpapers/lazyname/wallhaven-8oeg9y.jpg"
 
     [wallpaper.last]
-    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
+    path = "/home/zap/Pictures/Wallpapers/lazyname/wallhaven-8oeg9y.jpg"
 
     [wallpaper.monitors.DP-3]
-    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
+    path = "/home/zap/Pictures/Wallpapers/lazyname/wallhaven-8oeg9y.jpg"
 
     [wallpaper.monitors.DP-4]
-    path = "/home/zap/Pictures/Wallpapers/darkfantasy/unedited/ChatGPT Image Sep 10, 2026, 04_25_13 PM.png"
+    path = "/home/zap/Pictures/Wallpapers/lazyname/wallhaven-8oeg9y.jpg"
 
 [widget.audio_visualizer]
 anchor = true
@@ -420,8 +420,6 @@ mirrored = false
 width = 1227
 
 [widget.bar]
-capsule = true
-capsule_opacity = 0.0
 type = "ahmedhossamdev/sticky-notes:bar"
 
 [widget.bar_2]
@@ -447,8 +445,9 @@ capsule_opacity = 0.0
 capsule = true
 capsule_opacity = 0.0
 
-[widget.widget]
-type = "tadomika_ari/config-swap:widget"
+[widget.theme]
+type = "zap/theme-manager:theme"
+
 
 [widget.workspaces]
 active_pill_size = 6.1500000000000004

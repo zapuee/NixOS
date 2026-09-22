@@ -1,84 +1,220 @@
 name = "glass"
-description = "Transparent rounded desktop with strong blur"
+
+description = "Glass structure profile"
 
 
 # ============================================================
-# STYLE VARIABLES
+# SHARED STYLE VARIABLES
+#
+# Applications reference tiered values with:
+#   "primary"
+#   "secondary"
+#   "tertiary"
+#
+# Example:
+#   background_opacity = "secondary"
+#     -> secondary_bg_opacity
+#
+#   corner_radius = "primary"
+#     -> primary_corner_radius
+#
+# Non-tiered shared values use:
+#   "default"
 # ============================================================
 
 [variables]
 
-# Background opacity
-primary_bg_opacity = 0.82
-secondary_bg_opacity = 0.72
-tertiary_bg_opacity = 0.62
 
-# Background blur
-primary_bg_blur = 20
-secondary_bg_blur = 14
-tertiary_bg_blur = 8
+# ============================================================
+# BACKGROUND OPACITY
+#
+# 1.0 = fully opaque
+# 0.0 = fully transparent
+# ============================================================
 
-# Geometry
-primary_corner_radius = 16
-secondary_corner_radius = 10
-tertiary_corner_radius = 7
-
-# Material
-preferred_material = "glass"
-
-# Layout
-gaps = 8
-outer_gaps = 12
-border_width = 2
-
-# Effects
-shadow_strength = 0.35
+primary_bg_opacity = 0.25
+secondary_bg_opacity = 0.85
+tertiary_bg_opacity = 0.10
 
 
 # ============================================================
-# NIRI
+# FOCUS RING
+# ============================================================
+
+focus_ring_width = 2
+
+focus_ring_active_opacity = 0.40
+focus_ring_inactive_opacity = 0.25
+focus_ring_urgent_opacity = 0.25
+
+
+# ============================================================
+# CORNER RADIUS
+# ============================================================
+
+primary_corner_radius = 1
+secondary_corner_radius = 10
+
+
+# ============================================================
+# MATERIAL
+#
+# Intended values:
+#   "glass"
+#   "solid"
+#
+# Applications may use:
+#   material = "preferred"
+# ============================================================
+
+preferred_material = "glass"
+
+
+# ============================================================
+# LAYOUT
+# ============================================================
+
+gaps = 8
+outer_gaps = 12
+
+
+# ============================================================
+# EFFECTS
+# ============================================================
+
+shadow_strength = 1.00
+
+# ============================================================
+# NIRI / WINDOW MANAGER
+#
+# Niri controls:
+#   - gaps
+#   - outer gaps
+#   - focus ring
+#   - window corner radius
+#   - shadows
+#   - compositor blur for applications
+#
+# color.* values come from Noctalia's current wallpaper palette.
 # ============================================================
 
 [applications.niri]
+
 enabled = true
 
-window_opacity = "primary"
+
+# ------------------------------------------------------------
+# Window geometry
+# ------------------------------------------------------------
+
 corner_radius = "primary"
+
+
+# ------------------------------------------------------------
+# Layout
+# ------------------------------------------------------------
 
 gaps = "default"
 outer_gaps = "default"
 
-border_width = "default"
 
-border_active_color = "primary"
-border_inactive_color = "inactive"
-border_urgent_color = "urgent"
+# ------------------------------------------------------------
+# Focus ring
+# ------------------------------------------------------------
+
+focus_ring_width = "default"
+
+focus_ring_active_opacity = "default"
+focus_ring_inactive_opacity = "default"
+focus_ring_urgent_opacity = "default"
+
+focus_ring_active_color = "color.primary"
+focus_ring_inactive_color = "color.outline"
+focus_ring_urgent_color = "color.error"
+
+
+# ------------------------------------------------------------
+# Shadow
+# ------------------------------------------------------------
+
+shadow_strength = "default"
+shadow_color = "color.shadow"
+
 
 
 # ============================================================
 # FIREFOX
+#
+# Firefox controls its own background opacity.
+#
+# Niri controls:
+#   - outer window radius
+#   - compositor blur
+#
+# Noctalia provides wallpaper-derived colors.
 # ============================================================
 
 [applications.firefox]
+
 enabled = true
 
 background_opacity = "secondary"
-blur = "secondary"
+
+blur = true
+
 corner_radius = "primary"
+
 material = "preferred"
+
+accent_color = "color.primary"
+
 
 
 # ============================================================
 # TERMINAL
+#
+# Generic terminal configuration.
+# target selects the terminal backend.
 # ============================================================
 
 [applications.terminal]
+
 enabled = true
 target = "foot"
 
+
+# ------------------------------------------------------------
+# Transparency
+# ------------------------------------------------------------
+
 background_opacity = "primary"
-blur = "primary"
+
+
+# ------------------------------------------------------------
+# Compositor effects
+# ------------------------------------------------------------
+
+blur = true
+
 corner_radius = "primary"
+
 material = "preferred"
 
+
+# ------------------------------------------------------------
+# Layout
+#
+# Not wired into Foot yet.
+# ------------------------------------------------------------
+
 gaps = "default"
+
+
+# ------------------------------------------------------------
+# Wallpaper-derived colors
+#
+# Not wired into Foot yet.
+# ------------------------------------------------------------
+
+cursor_color = "color.primary"
+selection_color = "color.secondary"
