@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.userSettings.media;
@@ -21,7 +26,7 @@ in
       curl-impersonate # for ani-cli
       yt-dlp
       ffmpeg
-      mpv 
+      mpv
     ];
 
   };

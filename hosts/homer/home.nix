@@ -1,60 +1,48 @@
-{ shared, config, inputs, pkgs, pkgs-stable, ... }:
-
+{ ... }:
 {
+  imports = [ ./niri.nix ];
+
   config = {
     userSettings = {
 
-      editor = "nvf"; # nvf
-      terminal = "foot"; # alacritty, kitty, foot
-      browser = "firefox"; # firefox
-      vpn = "proton"; # proton
-      bitwarden.enable = true; # password manager (CLI)
-      theme-manager.enable = true;
+      editor = "nvf";
+      terminal = "foot";
+      browser = "firefox";
+      vpn = "proton";
+      bitwarden = {
+        enable = true;
+        email = "zapuee@tutamail.com";
+      };
+      themeManager.enable = true;
 
-      desktop-shell = "noctalia"; # noctalia, serpantinum
+      desktopShell = "noctalia";
 
-      shell.enable = true; # enable misc zsh configs
-      shell.apps.enable = true; # useful cli util
-      shell.extraApps.enable = true;  # fun cli like neofetch
+      shell = {
+        enable = true;
+        utilities.enable = true;
+        fun.enable = true;
+      };
 
-      tmux.enable = true; # for tmux obv
+      tmux.enable = true;
 
-      programming-cli.enable = true; # stuff like cargo and whatnot
+      development.enable = true;
 
-      media.enable = true; # media-players like vlc
-      spicetify.enable = true; # spotify but cooler
-      obsidian.enable = true; # for note taking
-      
-      starship.enable = true; # for cool terminal thoing
-      starship.style = "grayscale"; # list is in the starship directory
-      starship.useNoctalia = true; # noctalia wallpaper defines the style
+      media.enable = true;
+      spotify.enable = true;
+      obsidian.enable = true;
 
-      discord.enable = true;
-      discord.client = "vencord"; # equibop, vencord
+      starship = {
+        enable = true;
+        style = "grayscale";
+        useNoctalia = true;
+      };
 
+      discord = {
+        enable = true;
+        client = "vencord";
+      };
+
+      wallpaperServer.enable = true;
     };
-
-    home.username = shared.username;
-    home.homeDirectory = "/home/" + shared.username;
-  
-    home.stateVersion = "26.05";
-
-    # host some wallpapers (for stylus)
-    systemd.user.services.wallpaper-server = {
-      Unit = {
-        Description = "Local wallpaper server";
-      };
-
-      Service = {
-        ExecStart = "${pkgs.python3}/bin/python -m http.server 8080 --bind 127.0.0.1";
-        WorkingDirectory = "%h/Pictures/Wallpapers";
-        Restart = "on-failure";
-      };
-
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-
   };
 }

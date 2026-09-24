@@ -1,16 +1,16 @@
-{ pkgs, lib, config, ... }:
+{
+  lib,
+  config,
+  ...
+}:
 
 let
   # Find every .css file beside this module
-  clients = lib.filterAttrs
-    (name: type:
-      type == "regular" && lib.hasSuffix ".nix" name
-    )
-    (builtins.readDir ./clients);
+  clients = lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".nix" name) (
+    builtins.readDir ./clients
+  );
 
-  clientNames = map
-    (name: lib.removeSuffix ".nix" name)
-    (builtins.attrNames clients);
+  clientNames = map (name: lib.removeSuffix ".nix" name) (builtins.attrNames clients);
 in
 {
   options.userSettings.discord = {
@@ -22,8 +22,9 @@ in
     };
   };
 
-  config = {
-    programs.concord = { # tui discord
+  config = lib.mkIf config.userSettings.discord.enable {
+    programs.concord = {
+      # tui discord
       enable = true;
       settings = {
         display.image_protocol = "sixel";

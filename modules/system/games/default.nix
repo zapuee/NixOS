@@ -1,17 +1,22 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 {
   options.systemSettings.games = {
     enable = lib.mkEnableOption "all games";
   };
 
-  config = lib.mkIf (config.systemSettings.games.enable == true){
+  config = lib.mkIf config.systemSettings.games.enable {
+    programs.steam.enable = true;
+
     environment.systemPackages = with pkgs; [
       heroic
       prismlauncher
       lutris
-      steam
-
       mangohud
       gamescope
       gamemode

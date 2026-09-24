@@ -1,4 +1,10 @@
-{ lib, config, inputs, pkgs, ... }:
+{
+  lib,
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -36,27 +42,38 @@
           transparent = true;
         };
 
-        # Nix language
-        languages.nix = {
-          enable = true;
-          treesitter.enable = true;
-          format.enable = false;
-          lsp = {
+        languages = {
+          nix = {
             enable = true;
-            servers = [ "nixd" ];
+            treesitter.enable = true;
+            format.enable = false;
+            lsp = {
+              enable = true;
+              servers = [ "nixd" ];
+            };
+          };
+
+          lua = {
+            enable = true;
+            treesitter.enable = true;
+            format.enable = false;
+            lsp = {
+              enable = true;
+              servers = [ "lua-language-server" ];
+            };
+          };
+
+          rust = {
+            enable = true;
+            treesitter.enable = true;
+            format.enable = false;
+            lsp = {
+              enable = true;
+              servers = [ "rust-analyzer" ];
+            };
           };
         };
 
-        # Lua/Luau language
-        languages.lua = {
-          enable = true;
-          treesitter.enable = true;
-          format.enable = false;
-          lsp = {
-            enable = true;
-            servers = [ "lua-language-server" ];
-          };
-        };
         lsp = {
           enable = true;
           servers.luau-lsp = {
@@ -76,17 +93,6 @@
           };
         };
 
-        # Rust language
-        languages.rust = {
-          enable = true;
-          treesitter.enable = true;
-          format.enable = false;
-          lsp = {
-            enable = true;
-            servers = [ "rust-analyzer" ];
-          };
-        };
-        
         lsp.servers."rust-analyzer".settings."rust-analyzer" = {
           cargo = {
             allTargets = false;
@@ -105,20 +111,26 @@
           enable = true;
         };
 
-        # tmux navigation
-        utility.smart-splits.enable = true;
+        utility = {
+          smart-splits.enable = true;
+          motion.flash-nvim.enable = true;
+          surround.enable = true;
+          sleuth.enable = true;
+        };
 
         # Because im a noobini pizzanini
         binds.whichKey.enable = true;
-        ui.borders.plugins.which-key.enable = true;
-
-        # Navigation
-        utility.motion.flash-nvim.enable = true;
+        ui = {
+          borders = {
+            enable = true;
+            plugins.which-key.enable = true;
+          };
+          nvim-highlight-colors.enable = true;
+          illuminate.enable = true;
+        };
 
         # Fuzzy Find
         fzf-lua.enable = true;
-
-        utility.surround.enable = true;
 
         terminal.toggleterm = {
           enable = true;
@@ -129,27 +141,18 @@
           };
         };
 
-        # lsp info
-        visuals.fidget-nvim.enable = true;
-
-        # Show indent
-        visuals.indent-blankline.enable = true;
+        visuals = {
+          fidget-nvim.enable = true;
+          indent-blankline.enable = true;
+          satellite-nvim.enable = true;
+          nvim-cursorline = {
+            enable = true;
+            setupOpts.cursorline.enable = true;
+          };
+        };
 
         # Splitjoin
         mini.splitjoin.enable = true;
-
-        # Nice scrollbar
-        visuals.satellite-nvim.enable = true;
-
-        # Show CursorLine
-        visuals.nvim-cursorline.enable = true;
-        visuals.nvim-cursorline.setupOpts.cursorline.enable = true;
-
-        # Colors!
-        ui.nvim-highlight-colors.enable = true;
-
-        # Automatic Tab Size
-        utility.sleuth.enable = true;
 
         # Harpoon
         navigation.harpoon = {
@@ -205,46 +208,46 @@
                     if not item then
                       return false
                     end
-              
+
                     local text_edits = require("blink.cmp.lib.text_edits")
                     local edit = text_edits.get_from_item(item)
-              
+
                     local kinds = vim.lsp.protocol.CompletionItemKind
-              
+
                     local callable =
                       item.kind == kinds.Function
                       or item.kind == kinds.Method
                       or item.kind == kinds.Constructor
-              
+
                     local label = item.label or ""
                     local filter = item.filterText
-              
+
                     local text = label
-              
+
                     if filter
                       and filter ~= ""
                       and label:find(filter, 1, true)
                     then
                       text = filter
                     end
-              
+
                     if callable then
                       text = text:gsub("%s*%b()%s*$", "")
                     end
-              
+
                     edit.newText = text
-              
+
                     cmp.cancel({
                       callback = function()
                         text_edits.apply(edit)
-              
+
                         vim.api.nvim_win_set_cursor(0, {
                           edit.range.start.line + 1,
                           edit.range.start.character + #text,
                         })
                       end,
                     })
-              
+
                     return true
                   end
                 '')
@@ -406,12 +409,6 @@
           };
         };
 
-        # UI helpers
-        ui = {
-          borders.enable = true;
-          illuminate.enable = true;
-        };
-
         globals = {
           mapleader = "\\";
           maplocalleader = "\\";
@@ -424,12 +421,15 @@
 
         keymaps = [
           {
-            mode = [ "n" "t" ];
+            mode = [
+              "n"
+              "t"
+            ];
             key = "<leader>t";
             action = "<cmd>ToggleTerm<CR>";
             desc = "Toggle Terminal";
           }
-          
+
           {
             key = "t";
             mode = "n";
@@ -456,21 +456,21 @@
             action = "<cmd>FzfLua files<CR>";
             desc = "Find Files";
           }
-        
+
           {
             mode = "n";
             key = "<leader>fg";
             action = "<cmd>FzfLua live_grep<CR>";
             desc = "Live Grep";
           }
-        
+
           {
             mode = "n";
             key = "<leader>fb";
             action = "<cmd>FzfLua buffers<CR>";
             desc = "Find Buffers";
           }
-        
+
           {
             mode = "n";
             key = "<leader>fh";

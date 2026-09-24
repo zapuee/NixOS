@@ -1,11 +1,18 @@
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   options = {
     systemSettings.bootloader = lib.mkOption {
-      type = lib.types.enum [ "grub" "systemd" ];
+      type = lib.types.enum [
+        "grub"
+        "systemd"
+      ];
       default = "grub";
-      description = "bootloader/init system";
+      description = "Boot loader used by the host.";
     };
   };
 

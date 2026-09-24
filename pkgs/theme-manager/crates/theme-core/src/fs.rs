@@ -43,7 +43,10 @@ pub fn write_if_changed(path: &Path, contents: &str) -> Result<bool> {
         .and_then(|v| v.to_str())
         .unwrap_or("output");
     let (tmp, mut file) = create_temp_file(&destination, file_name)?;
-    if let Err(err) = file.write_all(contents.as_bytes()) {
+    if let Err(err) = file
+        .write_all(contents.as_bytes())
+        .and_then(|()| file.sync_all())
+    {
         drop(file);
         let _ = fs::remove_file(&tmp);
         return Err(err)
@@ -65,10 +68,23 @@ pub fn write_if_changed(path: &Path, contents: &str) -> Result<bool> {
         let _ = fs::remove_file(&tmp);
         return Err(err).with_context(|| format!("failed to replace {}", destination.display()));
     }
+    // The replacement itself has succeeded. Directory sync is best effort so
+    // callers never interpret a durability warning as an uncommitted write.
+    let _ = sync_parent(&destination);
     Ok(true)
 }
 
-fn create_temp_file(destination: &Path, file_name: &str) -> Result<(PathBuf, fs::File)> {
+pub(crate) fn sync_parent(path: &Path) -> Result<()> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    fs::File::open(parent)
+        .and_then(|directory| directory.sync_all())
+        .with_context(|| format!("failed to sync directory {}", parent.display()))
+}
+
+pub(crate) fn create_temp_file(destination: &Path, file_name: &str) -> Result<(PathBuf, fs::File)> {
     for _ in 0..100 {
         let sequence = NEXT_TEMP_FILE.fetch_add(1, Ordering::Relaxed);
         let tmp = destination.with_file_name(format!(
@@ -90,7 +106,7 @@ fn create_temp_file(destination: &Path, file_name: &str) -> Result<(PathBuf, fs:
     )
 }
 
-fn write_destination(path: &Path) -> Result<PathBuf> {
+pub(crate) fn write_destination(path: &Path) -> Result<PathBuf> {
     match fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() => fs::canonicalize(path)
             .with_context(|| format!("failed to resolve output symlink {}", path.display())),

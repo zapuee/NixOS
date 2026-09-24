@@ -5,7 +5,7 @@
 
 {
   imports = [
-    inputs.theme-manager.homeManagerModules.default
+    inputs.theme-manager.homeModules.default
   ];
 
   programs.theme-manager.enable = true;

@@ -1,6 +1,6 @@
 # Migration from the Noctalia-hosted prototype
 
-Do not replace the working setup immediately. Run v0.1 beside it, verify the
+Do not replace the working setup immediately. Run v0.2 beside it, verify the
 generated fragments, then remove the old Theme Manager service.
 
 ## Recommended repo placement
@@ -9,13 +9,10 @@ The Rust engine should no longer live under the Noctalia desktop-shell module.
 A cleaner repository split is:
 
 ```text
-modules/user/programs/theme-manager/
-  <this Rust workspace or its Nix wrapper>
-
-modules/user/environments/desktop-shells/noctalia/
-  default.nix
-  rices/
-  integration/theme-manager.nix   # optional provider wiring only
+pkgs/theme-manager/                 standalone package and reusable HM module
+modules/user/theme-manager/         local Home Manager policy/configuration
+modules/user/desktop/shells/noctalia/
+  default.nix                       optional provider wiring only
 ```
 
 That keeps `theme-manager` installable when Noctalia is not selected.

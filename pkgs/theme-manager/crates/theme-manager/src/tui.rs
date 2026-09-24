@@ -228,25 +228,7 @@ impl App {
     }
 
     fn check_configuration(&mut self) {
-        let result = (|| -> Result<String> {
-            let runtime = Runtime::load(self.requested_config.as_deref())?;
-            let profiles = runtime.engine.list_profiles()?;
-            for profile in &profiles {
-                runtime
-                    .engine
-                    .validate_profile(&profile.name)
-                    .with_context(|| format!("profile '{}' is invalid", profile.name))?;
-            }
-            Ok(format!(
-                "Configuration is valid ({} profile(s), {} target adapter(s)).",
-                profiles.len(),
-                runtime
-                    .target_statuses()
-                    .iter()
-                    .filter(|target| target.configured)
-                    .count()
-            ))
-        })();
+        let result = crate::doctor::validation_summary(self.requested_config.as_deref());
         match result {
             Ok(message) => self.set_message(message, false),
             Err(err) => self.set_message(format!("{err:#}"), true),

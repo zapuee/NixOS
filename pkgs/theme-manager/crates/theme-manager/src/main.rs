@@ -1,3 +1,5 @@
+mod doctor;
+mod health;
 mod registry;
 mod runtime;
 mod tui;
@@ -55,6 +57,9 @@ enum Command {
         profile: String,
         #[arg(long)]
         dry_run: bool,
+        /// Explicitly replace modified or unmanaged files at configured output paths.
+        #[arg(long)]
+        force: bool,
         #[arg(long)]
         json: bool,
     },
@@ -74,6 +79,12 @@ enum Command {
 
     /// Validate one profile, or every profile when no name is supplied.
     Check { profile: Option<String> },
+
+    /// Diagnose configuration, profiles, outputs, plugins, and watcher health.
+    Doctor {
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Watch profiles, provider output, state and config; reapply live on changes.
     Watch,
@@ -252,6 +263,10 @@ fn main() -> Result<()> {
         return watch::run(cli.config);
     }
 
+    if let Command::Doctor { json } = &cli.command {
+        return doctor::run(cli.config.as_deref(), *json);
+    }
+
     if let Command::Tui { no_vim } = &cli.command {
         return tui::run(cli.config, *no_vim);
     }
@@ -275,9 +290,12 @@ fn main() -> Result<()> {
         Command::Apply {
             profile,
             dry_run,
+            force,
             json,
         } => {
-            let report = runtime.engine.apply(&profile, dry_run)?;
+            let report = runtime
+                .engine
+                .apply_with_options(&profile, dry_run, force)?;
             if json {
                 print_json(&report)?;
             } else {
@@ -295,6 +313,9 @@ fn main() -> Result<()> {
                     );
                     for path in &target.changed {
                         outputln!("    -> {}", path.display());
+                    }
+                    for path in &target.forced {
+                        outputln!("    !! forcibly replaced {}", path.display());
                     }
                 }
             }
@@ -388,6 +409,7 @@ fn main() -> Result<()> {
         },
 
         Command::Watch
+        | Command::Doctor { .. }
         | Command::Tui { .. }
         | Command::Plugins { .. }
         | Command::Components { action: None, .. } => {

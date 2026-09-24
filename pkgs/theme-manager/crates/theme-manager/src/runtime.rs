@@ -7,7 +7,12 @@ use std::{
     io::ErrorKind,
     path::{Path, PathBuf},
 };
-use theme_core::{Config, Engine, GENERATED_MARKER, paths::canonical_output_path, state};
+use theme_core::{
+    Config, Engine, GENERATED_MARKER,
+    paths::canonical_output_path,
+    state,
+    transaction::{self, Operation},
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TargetStatus {
@@ -49,7 +54,10 @@ impl Runtime {
             .with_context(|| format!("failed to initialize provider '{}'", config.provider.kind))?;
 
         let state_file = config.state_file()?;
-        let current_state = state::read(&state_file)?;
+        let current_state = state::with_lock(&state_file, || {
+            transaction::recover(&state_file)?;
+            state::read(&state_file)
+        })?;
         let mut target_controls = BTreeMap::new();
         let mut targets = Vec::new();
         let mut output_owners = BTreeMap::new();
@@ -120,6 +128,19 @@ impl Runtime {
             .collect()
     }
 
+    pub fn diagnostic_outputs(&self) -> Vec<(String, PathBuf)> {
+        self.target_controls
+            .iter()
+            .flat_map(|(target, control)| {
+                control
+                    .output_paths
+                    .iter()
+                    .cloned()
+                    .map(|path| (target.clone(), path))
+            })
+            .collect()
+    }
+
     pub fn set_target_enabled(&self, target: &str, enabled: bool) -> Result<TargetChangeReport> {
         let control = self
             .target_controls
@@ -141,31 +162,36 @@ impl Runtime {
             removed: Vec::new(),
         };
         let state_file = self.engine.state_file()?;
-        let changed = state::with_lock(&state_file, || {
-            let mut current_state = state::read(&state_file)?;
-            let currently_enabled = !current_state.disabled_targets.contains(target);
-            if currently_enabled == enabled {
-                return Ok(false);
-            }
-
-            if !enabled {
-                match remove_outputs(&control.output_paths, target, &mut current_state) {
-                    Ok(removed) => report.removed = removed,
-                    Err(err) => {
-                        state::write(&state_file, &current_state)?;
-                        return Err(err);
-                    }
+        let changed =
+            state::with_lock(&state_file, || {
+                transaction::recover(&state_file)?;
+                let mut current_state = state::read(&state_file)?;
+                let currently_enabled = !current_state.disabled_targets.contains(target);
+                if currently_enabled == enabled {
+                    return Ok(false);
                 }
-            }
 
-            if enabled {
-                current_state.disabled_targets.remove(target);
-            } else {
-                current_state.disabled_targets.insert(target.to_string());
-            }
-            state::write(&state_file, &current_state)?;
-            Ok(true)
-        })?;
+                let mut removals = Vec::new();
+                if !enabled {
+                    let owned =
+                        validate_owned_outputs(&control.output_paths, target, &mut current_state)?;
+                    report.removed = owned.iter().map(|(path, _)| path.clone()).collect();
+                    removals.extend(owned.into_iter().map(|(path, expected_hash)| {
+                        Operation::Remove {
+                            path,
+                            expected_hash,
+                        }
+                    }));
+                }
+
+                if enabled {
+                    current_state.disabled_targets.remove(target);
+                } else {
+                    current_state.disabled_targets.insert(target.to_string());
+                }
+                transaction::commit(&state_file, removals, &mut current_state)?;
+                Ok(true)
+            })?;
         if !changed {
             return Ok(report);
         }
@@ -185,12 +211,29 @@ impl Runtime {
                     }
                     Err(err) => {
                         let rollback = state::with_lock(&state_file, || {
+                            transaction::recover(&state_file)?;
                             let mut current_state = state::read(&state_file)?;
                             current_state.disabled_targets.insert(target.to_string());
-                            let cleanup =
-                                remove_outputs(&control.output_paths, target, &mut current_state);
-                            state::write(&state_file, &current_state)?;
-                            cleanup.map(|_| ())
+                            let removed = match validate_owned_outputs(
+                                &control.output_paths,
+                                target,
+                                &mut current_state,
+                            ) {
+                                Ok(removed) => removed,
+                                Err(error) => {
+                                    state::write(&state_file, &current_state)?;
+                                    return Err(error);
+                                }
+                            };
+                            let operations = removed
+                                .into_iter()
+                                .map(|(path, expected_hash)| Operation::Remove {
+                                    path,
+                                    expected_hash,
+                                })
+                                .collect();
+                            transaction::commit(&state_file, operations, &mut current_state)?;
+                            Ok(())
                         });
                         if let Err(rollback_err) = rollback {
                             return Err(rollback_err).with_context(|| {
@@ -298,11 +341,11 @@ fn add_watch_locations(paths: &mut Vec<PathBuf>, path: &Path) {
     }
 }
 
-fn remove_outputs(
+fn validate_owned_outputs(
     paths: &[PathBuf],
     target: &str,
     current_state: &mut state::State,
-) -> Result<Vec<PathBuf>> {
+) -> Result<Vec<(PathBuf, String)>> {
     let mut owned = Vec::new();
 
     for path in paths {
@@ -366,39 +409,13 @@ fn remove_outputs(
         }
     }
 
-    // Recheck every file immediately before deletion. This preserves the
-    // all-or-nothing preflight if an editor changed an output during the first
-    // validation pass.
-    for (path, _, expected_hash) in &owned {
-        let contents = fs::read(path)
-            .with_context(|| format!("failed to recheck output {}", path.display()))?;
-        if state::content_hash(&contents) != *expected_hash {
-            bail!(
-                "refusing to remove {} because it changed during validation",
-                path.display()
-            );
-        }
+    let mut removals = Vec::new();
+    for (path, ownership_key, expected_hash) in owned {
+        current_state.generated_outputs.remove(&ownership_key);
+        removals.push((path, expected_hash));
     }
 
-    let mut removed = Vec::new();
-    for (path, ownership_key, _) in owned {
-        match fs::remove_file(&path) {
-            Ok(()) => {
-                current_state.generated_outputs.remove(&ownership_key);
-                removed.push(path);
-            }
-            Err(err) if err.kind() == ErrorKind::NotFound => {
-                current_state.generated_outputs.remove(&ownership_key);
-            }
-            Err(err) => {
-                return Err(err).with_context(|| {
-                    format!("failed to remove generated output {}", path.display())
-                });
-            }
-        }
-    }
-
-    Ok(removed)
+    Ok(removals)
 }
 
 pub fn parent_or_current(path: &Path) -> PathBuf {
@@ -410,7 +427,7 @@ pub fn parent_or_current(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{Runtime, add_watch_locations, remove_outputs};
+    use super::{Runtime, add_watch_locations, validate_owned_outputs};
     use std::{
         fs,
         path::Path,
@@ -434,7 +451,8 @@ mod tests {
         fs::write(&unmanaged, "# user configuration\n").unwrap();
 
         assert!(
-            remove_outputs(&[owned.clone(), unmanaged], "foot", &mut State::default()).is_err()
+            validate_owned_outputs(&[owned.clone(), unmanaged], "foot", &mut State::default())
+                .is_err()
         );
         assert!(owned.exists());
 

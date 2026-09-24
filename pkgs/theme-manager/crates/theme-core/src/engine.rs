@@ -1,8 +1,9 @@
 use crate::{
-    Artifact, Config, PaletteProvider, Profile, ResolvedTheme, Target,
-    fs::{contents_changed, write_if_changed},
+    Artifact, Config, GENERATED_MARKER, PaletteProvider, Profile, ResolvedTheme, Target,
+    fs::contents_changed,
     paths::canonical_output_path,
     resolve, state,
+    transaction::{self, Operation},
 };
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
@@ -23,6 +24,7 @@ pub struct TargetApplyReport {
     pub target: String,
     pub changed: Vec<PathBuf>,
     pub unchanged: Vec<PathBuf>,
+    pub forced: Vec<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -208,40 +210,42 @@ impl Engine {
     }
 
     pub fn apply(&self, name: &str, dry_run: bool) -> Result<ApplyReport> {
-        self.apply_internal(name, dry_run, !dry_run)
+        self.apply_with_options(name, dry_run, false)
+    }
+
+    pub fn apply_with_options(
+        &self,
+        name: &str,
+        dry_run: bool,
+        force: bool,
+    ) -> Result<ApplyReport> {
+        self.apply_internal(name, dry_run, !dry_run, force)
     }
 
     pub fn reapply(&self, name: &str) -> Result<ApplyReport> {
-        self.apply_internal(name, false, false)
+        self.apply_internal(name, false, false, false)
     }
 
-    fn apply_internal(&self, name: &str, dry_run: bool, make_active: bool) -> Result<ApplyReport> {
+    fn apply_internal(
+        &self,
+        name: &str,
+        dry_run: bool,
+        make_active: bool,
+        force: bool,
+    ) -> Result<ApplyReport> {
         let state_file = self.config.state_file()?;
-        if dry_run {
-            let mut current_state = state::read(&state_file)?;
-            return self.apply_with_state(name, true, &mut current_state);
-        }
-
         state::with_lock(&state_file, || {
+            transaction::recover(&state_file)?;
             let mut current_state = state::read(&state_file)?;
-            let report = match self.apply_with_state(name, false, &mut current_state) {
-                Ok(report) => report,
-                Err(err) => {
-                    // Earlier artifacts may already have been atomically
-                    // replaced. Persist their ownership records so a later
-                    // cleanup never mistakes them for unmanaged files.
-                    state::write(&state_file, &current_state).with_context(|| {
-                        format!(
-                            "apply failed ({err:#}) and updated output ownership could not be persisted"
-                        )
-                    })?;
-                    return Err(err);
-                }
-            };
+            let (report, operations) =
+                self.apply_with_state(name, dry_run, force, &mut current_state)?;
+            if dry_run {
+                return Ok(report);
+            }
             if make_active {
                 current_state.active_profile = Some(name.to_string());
             }
-            state::write(&state_file, &current_state)?;
+            transaction::commit(&state_file, operations, &mut current_state)?;
             Ok(report)
         })
     }
@@ -250,40 +254,72 @@ impl Engine {
         &self,
         name: &str,
         dry_run: bool,
+        force: bool,
         current_state: &mut state::State,
-    ) -> Result<ApplyReport> {
+    ) -> Result<(ApplyReport, Vec<Operation>)> {
         let theme = self.resolve_profile(name)?;
         let rendered = self.render_targets(&theme, false, &current_state.disabled_targets)?;
 
         let mut reports = Vec::new();
+        let mut operations = Vec::new();
 
         for (target, artifacts) in rendered {
             let mut changed = Vec::new();
             let mut unchanged = Vec::new();
+            let mut forced = Vec::new();
 
             for artifact in artifacts {
                 let ownership_hash = state::content_hash(artifact.contents.as_bytes());
-                let ownership_key = if dry_run {
-                    None
-                } else {
-                    Some(
-                        canonical_output_path(&artifact.path)?
-                            .to_string_lossy()
-                            .into_owned(),
-                    )
+                let ownership_key = canonical_output_path(&artifact.path)?
+                    .to_string_lossy()
+                    .into_owned();
+                let did_change = contents_changed(&artifact.path, &artifact.contents)?;
+                let existing = match fs::read(&artifact.path) {
+                    Ok(contents) => Some(contents),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                    Err(error) => {
+                        return Err(error).with_context(|| {
+                            format!("failed to read output {}", artifact.path.display())
+                        });
+                    }
                 };
-                let did_change = if dry_run {
-                    contents_changed(&artifact.path, &artifact.contents)?
-                } else {
-                    write_if_changed(&artifact.path, &artifact.contents)?
-                };
-
-                if did_change {
-                    changed.push(artifact.path);
-                } else {
-                    unchanged.push(artifact.path);
+                let existing_hash = existing.as_ref().map(state::content_hash);
+                let mut was_forced = false;
+                if let Some(contents) = &existing {
+                    let current_hash = state::content_hash(contents);
+                    let tracked = current_state
+                        .generated_outputs
+                        .get(&ownership_key)
+                        .is_some_and(|output| {
+                            output.target == target && output.hash == current_hash
+                        });
+                    let marker_owned = has_generated_marker(contents);
+                    if !tracked && !marker_owned {
+                        if !force {
+                            bail!(
+                                "refusing to replace {} because it has changed or is not owned by theme-manager; rerun the explicit apply with --force to replace it",
+                                artifact.path.display()
+                            );
+                        }
+                        was_forced = true;
+                    }
                 }
-                if let Some(ownership_key) = ownership_key {
+                if did_change {
+                    if !dry_run {
+                        operations.push(Operation::Write {
+                            path: artifact.path.clone(),
+                            contents: artifact.contents,
+                            expected_hash: existing_hash,
+                        });
+                    }
+                    if was_forced {
+                        forced.push(artifact.path.clone());
+                    }
+                    changed.push(artifact.path.clone());
+                } else {
+                    unchanged.push(artifact.path.clone());
+                }
+                if !dry_run {
                     current_state.generated_outputs.insert(
                         ownership_key,
                         state::GeneratedOutput {
@@ -298,14 +334,18 @@ impl Engine {
                 target: target.into(),
                 changed,
                 unchanged,
+                forced,
             });
         }
 
-        Ok(ApplyReport {
-            profile: name.to_string(),
-            dry_run,
-            targets: reports,
-        })
+        Ok((
+            ApplyReport {
+                profile: name.to_string(),
+                dry_run,
+                targets: reports,
+            },
+            operations,
+        ))
     }
 
     pub fn validate_profile(&self, name: &str) -> Result<()> {
@@ -320,4 +360,12 @@ impl Engine {
     pub fn state_file(&self) -> Result<PathBuf> {
         self.config.state_file()
     }
+}
+
+fn has_generated_marker(contents: &[u8]) -> bool {
+    let prefix = String::from_utf8_lossy(&contents[..contents.len().min(512)]);
+    let header = prefix.lines().next();
+    header == Some(GENERATED_MARKER)
+        || header.and_then(|line| line.strip_prefix("# ")) == Some(GENERATED_MARKER)
+        || header.and_then(|line| line.strip_prefix("// ")) == Some(GENERATED_MARKER)
 }

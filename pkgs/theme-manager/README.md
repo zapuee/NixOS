@@ -1,4 +1,4 @@
-# theme-manager v0.1
+# theme-manager v0.2
 
 A provider/target-based desktop appearance engine with CLI and TUI frontends.
 
@@ -12,6 +12,7 @@ No files need to be copied into `~/.config` before first use:
 ```bash
 nix build path:.
 ./result/bin/theme-manager check
+./result/bin/theme-manager doctor
 ./result/bin/theme-manager apply glass
 ./result/bin/theme-manager status
 ```
@@ -27,7 +28,7 @@ For Home Manager, add this flake as an input and enable its module:
 
 ```nix
 {
-  imports = [ inputs.theme-manager.homeManagerModules.default ];
+  imports = [ inputs.theme-manager.homeModules.default ];
   programs.theme-manager.enable = true;
 }
 ```
@@ -36,6 +37,28 @@ The module installs the package and starts the watcher. When Home Manager has
 Niri or Foot enabled, it also adds the generated fragment to that application's
 configuration. The packaged defaults therefore work without checkout paths or
 manual config symlinks.
+
+Typed configuration is optional; omitting `settings` keeps the packaged
+defaults. A raw `configFile` remains available for existing TOML configurations:
+
+```nix
+programs.theme-manager = {
+  enable = true;
+  profiles.glass = ./glass.toml;
+  settings = {
+    default_profile = "glass";
+    provider = {
+      kind = "luau:noctalia";
+      inputs.palette = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json";
+    };
+    targets.foot = {
+      adapter = "luau:foot";
+      outputs.config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini";
+      settings.role = "terminal";
+    };
+  };
+};
+```
 
 This is the first extraction of the old Noctalia-specific Theme Manager into an
 independent Rust application. Noctalia is now optional and only provides
@@ -208,7 +231,10 @@ the current structure profile.
 ```bash
 theme-manager list
 theme-manager status
+theme-manager doctor
+theme-manager doctor --json
 theme-manager apply glass
+theme-manager apply glass --force
 theme-manager apply paper
 theme-manager resolve glass
 theme-manager resolve glass --json
@@ -233,6 +259,12 @@ its generated fragment so an optional Niri/Foot include stops applying it.
 Enabling a target regenerates its fragment immediately. A target with
 `enabled = false` in `config.toml` remains a hard declarative disable and cannot
 be overridden at runtime.
+
+Normal applies never overwrite an unmanaged or manually modified output. Move
+the conflicting file, restore the last generated contents, or use the explicit
+`apply --force` escape hatch. The watcher and TUI never force replacement.
+Multi-output writes and removals use a recovery journal so a failed or
+interrupted operation can be rolled back before the next command proceeds.
 
 ## Luau extensions
 
@@ -328,6 +360,11 @@ bindings without restarting the watcher. Config and profile symlinks are
 resolved to their source directories, so editing Home Manager
 `mkOutOfStoreSymlink` sources also triggers a reload.
 
+The watcher also reconciles every 30 seconds, retries transient failures, and
+writes `watch-status.json` beside the state file. `theme-manager doctor` combines
+that health record with config, plugin, provider, profile, render, collision,
+and output-ownership checks.
+
 Configuration and profile structures reject unknown fields. A misspelled
 option therefore fails `theme-manager check` instead of being silently ignored.
 
@@ -364,11 +401,11 @@ include=~/.config/theme-manager/generated/foot.ini
 ```
 
 Niri live-reloads its include. Foot reads the generated alpha for newly created
-terminal instances; v0.1 does not inject control sequences into existing PTYs.
+terminal instances; v0.2 does not inject control sequences into existing PTYs.
 
 ## Current scope
 
-v0.1 intentionally focuses on the stable path we already proved:
+v0.2 intentionally focuses on the stable path we already proved:
 
 - semantic structure profiles
 - dynamic/static color provider plugins

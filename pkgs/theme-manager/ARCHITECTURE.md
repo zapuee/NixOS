@@ -28,13 +28,21 @@ pub trait Target: Send + Sync {
 }
 ```
 
-Targets are pure renderers in v0.1. The core performs compare-before-write and
+Targets are pure renderers in API v1. The core performs compare-before-write and
 atomic replacement, keeping application adapters small and consistent.
 Declaring output paths lets runtime component controls remove only generated
 files owned by a disabled target. Output ownership uses canonical paths and
 content hashes recorded in state, so format-neutral outputs are removed only
 when they still match what Rust last wrote. Collision checks resolve lexical and
 symlink aliases, preventing two adapters from targeting the same location.
+
+An apply first renders and preflights every output. Changed files are staged
+beside their destinations and committed with an on-disk journal tied to the
+state transaction ID. A normal apply only replaces a file whose ownership hash
+still matches (or a legacy generated file carrying the exact marker); explicit
+CLI force is required for any other regular file. Interrupted transactions are
+rolled back before the next runtime load, or finalized when their state commit
+already succeeded.
 
 ### Runtime component state
 

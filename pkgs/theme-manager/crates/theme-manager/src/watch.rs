@@ -1,10 +1,13 @@
-use crate::runtime::{Runtime, parent_or_current};
+use crate::{
+    health::{self, WatchHealth},
+    runtime::{Runtime, parent_or_current},
+};
 use anyhow::{Context, Result};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver},
+    sync::mpsc::{self, Receiver, RecvTimeoutError},
     thread,
     time::Duration,
 };
@@ -23,16 +26,25 @@ fn watch_missing_parent(path: &Path) -> Option<PathBuf> {
     }
 }
 
-fn register_paths(
+fn reconcile_paths(
     watcher: &mut RecommendedWatcher,
     watched: &mut BTreeSet<PathBuf>,
     paths: Vec<PathBuf>,
 ) {
-    for requested in paths {
-        let Some(path) = watch_missing_parent(&requested) else {
-            continue;
-        };
+    let desired = paths
+        .into_iter()
+        .filter_map(|requested| watch_missing_parent(&requested))
+        .collect::<BTreeSet<_>>();
 
+    for path in watched.difference(&desired).cloned().collect::<Vec<_>>() {
+        if let Err(err) = watcher.unwatch(&path) {
+            warn!(path = %path.display(), %err, "failed to stop watching path");
+        } else {
+            watched.remove(&path);
+        }
+    }
+
+    for path in desired {
         if watched.contains(&path) {
             continue;
         }
@@ -61,12 +73,32 @@ fn is_change_event(event: &Event) -> bool {
     )
 }
 
-fn wait_for_change(rx: &Receiver<notify::Result<Event>>) -> Result<()> {
+fn is_health_artifact(path: &Path, health_path: &Path) -> bool {
+    if path == health_path {
+        return true;
+    }
+    path.parent() == health_path.parent()
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with(".watch-status.json.") && name.ends_with(".tmp"))
+}
+
+fn wait_for_signal(
+    rx: &Receiver<notify::Result<Event>>,
+    timeout: Duration,
+    ignored_path: &Path,
+) -> Result<bool> {
     loop {
-        match rx.recv() {
+        match rx.recv_timeout(timeout) {
             Ok(Ok(event)) => {
-                if is_change_event(&event) {
-                    return Ok(());
+                if is_change_event(&event)
+                    && event
+                        .paths
+                        .iter()
+                        .any(|path| !is_health_artifact(path, ignored_path))
+                {
+                    return Ok(true);
                 }
             }
 
@@ -74,18 +106,19 @@ fn wait_for_change(rx: &Receiver<notify::Result<Event>>) -> Result<()> {
                 warn!(%err, "filesystem watch error");
             }
 
-            Err(err) => {
-                return Err(err).context("filesystem watcher channel closed");
+            Err(RecvTimeoutError::Timeout) => return Ok(false),
+            Err(RecvTimeoutError::Disconnected) => {
+                anyhow::bail!("filesystem watcher channel closed")
             }
         }
     }
 }
 
-fn apply_active(runtime: &Runtime) -> Result<()> {
+fn apply_active(runtime: &Runtime) -> Result<Option<String>> {
     let Some(profile) = runtime.engine.active_profile()? else {
         warn!("no active/default profile; waiting for `theme-manager apply <profile>`");
 
-        return Ok(());
+        return Ok(None);
     };
 
     let report = runtime.engine.reapply(&profile)?;
@@ -102,7 +135,7 @@ fn apply_active(runtime: &Runtime) -> Result<()> {
         "applied profile"
     );
 
-    Ok(())
+    Ok(Some(profile))
 }
 
 pub fn run(config_path: Option<PathBuf>) -> Result<()> {
@@ -114,46 +147,92 @@ pub fn run(config_path: Option<PathBuf>) -> Result<()> {
     .context("failed to create filesystem watcher")?;
 
     let mut watched = BTreeSet::new();
+    let mut health_status = WatchHealth::starting();
+    let fallback_state = theme_core::paths::xdg_state_home()?.join("theme-manager/state.toml");
+    let mut health_path = health::path_for_state(&fallback_state);
+    if let Err(error) = health::write(&health_path, &health_status) {
+        warn!(%error, "failed to write watcher health");
+    }
 
     let initial_config_dir = match &config_path {
         Some(path) => parent_or_current(path),
         None => xdg_config_home()?.join("theme-manager"),
     };
-    register_paths(&mut watcher, &mut watched, vec![initial_config_dir]);
+    reconcile_paths(&mut watcher, &mut watched, vec![initial_config_dir.clone()]);
+
+    let retry_delays = [
+        Duration::from_millis(250),
+        Duration::from_secs(1),
+        Duration::from_secs(4),
+    ];
+    let mut consecutive_failures = 0usize;
 
     loop {
+        health_status.last_attempt_ms = health::now_ms();
         let runtime = match Runtime::load(config_path.as_deref()) {
             Ok(runtime) => runtime,
 
             Err(err) => {
+                health_status.last_error = Some(format!("{err:#}"));
+                if let Err(health_error) = health::write(&health_path, &health_status) {
+                    warn!(%health_error, "failed to write watcher health");
+                }
                 error!(
                     %err,
-                    "runtime configuration is invalid; waiting for another file change"
+                    "runtime configuration is invalid; waiting to retry"
                 );
-
-                wait_for_change(&rx)?;
+                let delay = retry_delays
+                    .get(consecutive_failures)
+                    .copied()
+                    .unwrap_or(Duration::from_secs(30));
+                consecutive_failures = consecutive_failures.saturating_add(1);
+                let changed = wait_for_signal(&rx, delay, &health_path)?;
+                if changed {
+                    thread::sleep(Duration::from_millis(80));
+                    while rx.try_recv().is_ok() {}
+                }
                 continue;
             }
         };
 
-        register_paths(&mut watcher, &mut watched, runtime.watch_paths()?);
+        health_path = health::path_for_state(&runtime.engine.state_file()?);
+        let mut desired = runtime.watch_paths()?;
+        desired.push(initial_config_dir.clone());
+        reconcile_paths(&mut watcher, &mut watched, desired);
 
-        if let Err(err) = apply_active(&runtime) {
-            error!(
-                %err,
-                "apply failed; watcher remains active"
-            );
+        match apply_active(&runtime) {
+            Ok(profile) => {
+                health_status.last_success_ms = Some(health::now_ms());
+                health_status.active_profile = profile;
+                health_status.last_error = None;
+                consecutive_failures = 0;
+            }
+            Err(err) => {
+                health_status.last_error = Some(format!("{err:#}"));
+                consecutive_failures = consecutive_failures.saturating_add(1);
+                error!(%err, "apply failed; watcher remains active");
+            }
+        }
+        if let Err(error) = health::write(&health_path, &health_status) {
+            warn!(%error, "failed to write watcher health");
         }
 
-        // Ignore read/access events and wait for an actual filesystem
-        // modification.
-        wait_for_change(&rx)?;
+        let timeout = if consecutive_failures == 0 {
+            Duration::from_secs(30)
+        } else {
+            retry_delays
+                .get(consecutive_failures.saturating_sub(1))
+                .copied()
+                .unwrap_or(Duration::from_secs(30))
+        };
+        let changed = wait_for_signal(&rx, timeout, &health_path)?;
 
-        // Editors and template generators often produce multiple events for
-        // one logical change. Give them a moment to finish, then collapse the
-        // batch into one apply.
-        thread::sleep(Duration::from_millis(80));
-
-        while rx.try_recv().is_ok() {}
+        if changed {
+            // Editors and template generators often produce multiple events for
+            // one logical change. Give them a moment to finish, then collapse the
+            // batch into one apply.
+            thread::sleep(Duration::from_millis(80));
+            while rx.try_recv().is_ok() {}
+        }
     }
 }

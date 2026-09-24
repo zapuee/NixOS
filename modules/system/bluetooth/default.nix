@@ -4,11 +4,7 @@ let
   cfg = config.systemSettings.bluetooth.enable;
 in
 {
-  options.systemSettings.bluetooth.enable = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = "bluueoth";
-  };
+  options.systemSettings.bluetooth.enable = lib.mkEnableOption "Bluetooth support and the Blueman applet";
 
   config = lib.mkIf cfg {
     hardware.bluetooth.enable = true;

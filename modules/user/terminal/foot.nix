@@ -1,15 +1,12 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
-let
-  cfg = config.userSettings.foot;
-in {
-  options = {
-    userSettings.foot = {
-      enable = lib.mkEnableOption "Enable foot";
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
+{
+  config = lib.mkIf (config.userSettings.terminal == "foot") {
     home.packages = [
       pkgs.foot
       pkgs.nerd-fonts.lilex
@@ -28,11 +25,10 @@ in {
         main = {
           font = "Lilex Nerd Font Mono:size=10";
           pad = "5x5";
-        
-          include = [
-            "~/.config/foot/themes/noctalia"
-            "~/.config/theme-manager/generated/foot.ini"
-          ];
+
+          include = lib.optional (
+            config.userSettings.desktopShell == "noctalia"
+          ) "~/.config/foot/themes/noctalia";
         };
 
         colors-dark = {

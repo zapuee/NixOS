@@ -4,13 +4,7 @@ let
   cfg = config.systemSettings.keyd;
 in
 {
-  options.systemSettings.keyd = {
-    enable = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "For key remapping";
-    };
-  };
+  options.systemSettings.keyd.enable = lib.mkEnableOption "system-wide key remapping with keyd";
 
   config = lib.mkIf cfg.enable {
     services.keyd = {

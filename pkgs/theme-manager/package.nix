@@ -1,8 +1,12 @@
-{ lib, makeWrapper, rustPlatform }:
+{
+  lib,
+  makeWrapper,
+  rustPlatform,
+}:
 
 rustPlatform.buildRustPackage {
   pname = "theme-manager";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = lib.fileset.toSource {
     root = ./.;
@@ -55,6 +59,7 @@ rustPlatform.buildRustPackage {
     export XDG_CACHE_HOME="$testHome/cache"
 
     "$out/bin/theme-manager" check
+    "$out/bin/theme-manager" doctor --json | grep -q '"schema": 1'
     "$out/bin/theme-manager" plugins check
     "$out/bin/theme-manager" apply glass
     test -f "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"

@@ -1,45 +1,25 @@
-{ pkgs, pkgs-stable, shared, lib, config, ... }:
-
-
+{ lib, ... }:
 {
   config = {
     systemSettings = {
       bootloader = "systemd"; # grub, systemd
-      environment = "niri"; # niri, plasma, hyprland
+      desktop = "niri";
 
       flatpak.enable = true; # for flatpak packages
       hardware.gpu = "intel"; # nvidia intel
-      
+
       demucs.enable = true; # removing vocals off audio
-      mail.enable = true; # tutomail desktop
+      email.enable = true;
       doas.enable = true; # sudo -> doas = less bloat
       keyd.enable = true; # for key remapping
       virtualization.enable = false; # for testing builds in a vm
       bluetooth.enable = true; # self explanitory
       games.enable = true; # bunch of launchers and sober
-      ai.enable = true; # for ai stuff
-    };
-
-    # Assigning server user i think
-    programs.zsh.enable = true;
-    users.users.${shared.username} = {
-      isNormalUser = true;
-      description = shared.username;
-      shell = pkgs.zsh;
-      extraGroups = [
-        "wheel"
-        "networkmanager"
-        "audio"
-        "video"
-        "render"
-        "input"
-        "storage"
-      ];
+      aiTools.enable = true;
+      printing.enable = true;
     };
 
     boot.loader.systemd-boot.configurationLimit = lib.mkForce 5;
     networking.networkmanager.enable = true;
-    system.stateVersion = "26.05";
   };
-
 }

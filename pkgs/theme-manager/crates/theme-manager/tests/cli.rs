@@ -2,14 +2,25 @@ use serde_json::Value;
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::{Child, Command, Output, Stdio},
     sync::atomic::{AtomicUsize, Ordering},
+    thread,
+    time::{Duration, Instant},
 };
 
 static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 struct Fixture {
     root: PathBuf,
+}
+
+struct ChildGuard(Child);
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
 }
 
 impl Fixture {
@@ -39,6 +50,7 @@ impl Fixture {
             r##"
 profiles_dir = "{}"
 state_file = "{}"
+default_profile = "glass"
 
 [provider]
 kind = "luau:static"
@@ -73,6 +85,193 @@ on_surface = "#dfe4de"
             .output()
             .unwrap()
     }
+}
+
+#[test]
+fn apply_refuses_unmanaged_output_unless_force_is_explicit() {
+    let fixture = Fixture::new();
+    let output = fixture.path("foot.ini");
+    fs::write(&output, "user-owned configuration\n").unwrap();
+    let config = fixture.write_config(&format!(
+        r#"[targets.foot]
+adapter = "luau:foot"
+[targets.foot.outputs]
+config = "{}"
+[targets.foot.settings]
+role = "terminal""#,
+        output.display(),
+    ));
+
+    let refused = fixture.run(&config, &["apply", "glass"]);
+    assert!(!refused.status.success());
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("--force"));
+    assert_eq!(
+        fs::read_to_string(&output).unwrap(),
+        "user-owned configuration\n"
+    );
+
+    let forced = fixture.run(&config, &["apply", "glass", "--force", "--json"]);
+    assert!(
+        forced.status.success(),
+        "{}",
+        String::from_utf8_lossy(&forced.stderr)
+    );
+    let report: Value = serde_json::from_slice(&forced.stdout).unwrap();
+    assert_eq!(
+        report["targets"][0]["forced"][0],
+        output.display().to_string()
+    );
+    assert!(fs::read_to_string(output).unwrap().contains("alpha=0.25"));
+}
+
+#[test]
+fn apply_refuses_a_modified_owned_output() {
+    let fixture = Fixture::new();
+    let output = fixture.path("foot.ini");
+    let config = fixture.write_config(&format!(
+        r#"[targets.foot]
+adapter = "luau:foot"
+[targets.foot.outputs]
+config = "{}"
+[targets.foot.settings]
+role = "terminal""#,
+        output.display(),
+    ));
+
+    assert!(fixture.run(&config, &["apply", "glass"]).status.success());
+    fs::write(&output, "manually edited\n").unwrap();
+    let refused = fixture.run(&config, &["apply", "glass"]);
+    assert!(!refused.status.success());
+    assert_eq!(fs::read_to_string(output).unwrap(), "manually edited\n");
+}
+
+#[test]
+fn output_preflight_prevents_partial_writes_on_filesystem_errors() {
+    let fixture = Fixture::new();
+    let first = fixture.path("a-foot.ini");
+    let invalid = fixture.path("z-invalid");
+    fs::create_dir_all(&invalid).unwrap();
+    let config = fixture.write_config(&format!(
+        r#"[targets.first]
+adapter = "luau:foot"
+[targets.first.outputs]
+config = "{}"
+[targets.first.settings]
+role = "terminal"
+
+[targets.second]
+adapter = "luau:foot"
+[targets.second.outputs]
+config = "{}"
+[targets.second.settings]
+role = "terminal""#,
+        first.display(),
+        invalid.display(),
+    ));
+
+    let apply = fixture.run(&config, &["apply", "glass"]);
+    assert!(!apply.status.success());
+    assert!(!first.exists());
+    assert!(invalid.is_dir());
+}
+
+#[test]
+fn doctor_has_a_versioned_json_report_and_warnings_do_not_fail() {
+    let fixture = Fixture::new();
+    let config = fixture.write_config("");
+    let doctor = fixture.run(&config, &["doctor", "--json"]);
+    assert!(
+        doctor.status.success(),
+        "{}",
+        String::from_utf8_lossy(&doctor.stderr)
+    );
+    let report: Value = serde_json::from_slice(&doctor.stdout).unwrap();
+    assert_eq!(report["schema"], 1);
+    assert_eq!(report["ok"], true);
+    assert!(
+        report["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|check| check["code"] == "watcher.status_missing")
+    );
+}
+
+#[test]
+fn watcher_recovers_when_a_provider_input_appears_and_reports_health() {
+    let fixture = Fixture::new();
+    let palette = fixture.path("palette.json");
+    let output = fixture.path("foot.ini");
+    let state = fixture.path("state.toml");
+    let config = fixture.path("watch.toml");
+    fs::write(
+        &config,
+        format!(
+            r#"profiles_dir = "{}"
+state_file = "{}"
+default_profile = "glass"
+
+[provider]
+kind = "luau:noctalia"
+[provider.inputs]
+palette = "{}"
+
+[targets.foot]
+adapter = "luau:foot"
+[targets.foot.outputs]
+config = "{}"
+[targets.foot.settings]
+role = "terminal"
+"#,
+            fixture.path("profiles").display(),
+            state.display(),
+            palette.display(),
+            output.display(),
+        ),
+    )
+    .unwrap();
+
+    let child = Command::new(env!("CARGO_BIN_EXE_theme-manager"))
+        .env(
+            "THEME_MANAGER_DATA_DIR",
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        )
+        .arg("--config")
+        .arg(&config)
+        .arg("watch")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let _guard = ChildGuard(child);
+    thread::sleep(Duration::from_millis(200));
+    fs::write(
+        &palette,
+        r##"{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000","secondary":"#9ccaff","surface":"#0f1512","on_surface":"#dfe4de"}"##,
+    )
+    .unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let health_path = fixture.path("watch-status.json");
+    let mut health = None;
+    while Instant::now() < deadline {
+        health = fs::read_to_string(&health_path)
+            .ok()
+            .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+            .filter(|value| value["last_success_ms"].is_number());
+        if output.exists() && health.is_some() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+    assert!(
+        output.exists(),
+        "watcher did not recover after provider input appeared"
+    );
+    let health = health.expect("watcher did not report a successful health update");
+    assert_eq!(health["schema"], 1);
+    assert!(health["last_success_ms"].is_number());
+    assert!(health["last_error"].is_null());
 }
 
 impl Drop for Fixture {

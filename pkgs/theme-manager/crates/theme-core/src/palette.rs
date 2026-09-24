@@ -19,7 +19,7 @@ impl Palette {
     pub fn validate_color(value: &str) -> Result<()> {
         let hex = value.strip_prefix('#').unwrap_or(value);
         if !matches!(hex.len(), 6 | 8) || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-            bail!("unsupported color '{value}'; v0.1 expects #RRGGBB or #RRGGBBAA");
+            bail!("unsupported color '{value}'; expected #RRGGBB or #RRGGBBAA");
         }
         Ok(())
     }

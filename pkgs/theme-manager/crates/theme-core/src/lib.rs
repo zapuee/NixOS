@@ -8,6 +8,7 @@ pub mod provider;
 pub mod resolve;
 pub mod state;
 pub mod target;
+pub mod transaction;
 
 pub use config::{Config, ExtensionLimits, ExtensionsConfig, ProviderSpec};
 pub use engine::{ApplyReport, Engine, ProfileSummary, TargetApplyReport};

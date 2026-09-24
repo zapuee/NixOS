@@ -1,8 +1,15 @@
-{ inputs, pkgs, lib, config, ... }:
+{
+  inputs,
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 let
   cfg = config.systemSettings.flatpak;
-in {
+in
+{
 
   imports = [ inputs.nix-flatpak.nixosModules.nix-flatpak ];
 
@@ -16,18 +23,22 @@ in {
     services.flatpak = {
       enable = true;
       packages = [
-        (let
-           sha256 = "sha256-mFCGbrMCiaL2TQ+BOZId3G1+vIlSKHvBq7oGsfMIBYA=";
-         in {
-           appId = "io.github.zxcloli666.SoundcloudDesktop";
-           inherit sha256;
+        (
+          let
+            sha256 = "sha256-mFCGbrMCiaL2TQ+BOZId3G1+vIlSKHvBq7oGsfMIBYA=";
+          in
+          {
+            appId = "io.github.zxcloli666.SoundcloudDesktop";
+            inherit sha256;
 
-           bundle = "${pkgs.fetchurl {
-             url = "https://github.com/zxcloli666/SoundCloud-Desktop-EN/releases/download/8.4.9/soundcloud-desktop.flatpak";
-             inherit sha256;
-           }}";
-         })
-      ] ++ lib.optionals config.systemSettings.games.enable [
+            bundle = "${pkgs.fetchurl {
+              url = "https://github.com/zxcloli666/SoundCloud-Desktop-EN/releases/download/8.4.9/soundcloud-desktop.flatpak";
+              inherit sha256;
+            }}";
+          }
+        )
+      ]
+      ++ lib.optionals config.systemSettings.games.enable [
         # games
         "org.vinegarhq.Sober"
         "com.usebottles.bottles"
@@ -39,7 +50,7 @@ in {
         onCalendar = "weekly";
       };
     };
-      
+
     xdg.portal = {
       enable = true;
       extraPortals = [

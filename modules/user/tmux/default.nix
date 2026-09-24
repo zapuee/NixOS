@@ -1,29 +1,26 @@
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 
 let
   cfg = config.userSettings.tmux;
 
-  projectFiles = lib.filterAttrs
-    (name: type:
-      type == "regular"
-      && (lib.hasSuffix ".yaml" name || lib.hasSuffix ".yml" name)
-    )
-    (builtins.readDir ./.);
+  projectFiles = lib.filterAttrs (
+    name: type: type == "regular" && (lib.hasSuffix ".yaml" name || lib.hasSuffix ".yml" name)
+  ) (builtins.readDir ./.);
 
-  projects = lib.mapAttrs'
-    (name: _:
-      let
-        projectName =
-          lib.removeSuffix ".yaml"
-          (lib.removeSuffix ".yml" name);
-      in
-        lib.nameValuePair
-          ".config/tmuxp/${projectName}.yaml"
-          {
-            source = ./. + "/${name}";
-          }
-    )
-    projectFiles;
+  projects = lib.mapAttrs' (
+    name: _:
+    let
+      projectName = lib.removeSuffix ".yaml" (lib.removeSuffix ".yml" name);
+    in
+    lib.nameValuePair ".config/tmuxp/${projectName}.yaml" {
+      source = ./. + "/${name}";
+    }
+  ) projectFiles;
 in
 {
   options.userSettings.tmux = {
