@@ -97,6 +97,7 @@ pub struct Shadow {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct RoleStyle {
     #[serde(default)]
     pub background_opacity: Option<NumberRef>,
@@ -112,8 +113,6 @@ pub struct RoleStyle {
     pub cursor_color: Option<String>,
     #[serde(default)]
     pub selection_color: Option<String>,
-    #[serde(flatten)]
-    pub extra: BTreeMap<String, toml::Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -159,4 +158,16 @@ pub struct ResolvedRole {
     pub accent_color: Option<String>,
     pub cursor_color: Option<String>,
     pub selection_color: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RoleStyle;
+
+    #[test]
+    fn unknown_role_options_are_rejected() {
+        let error = toml::from_str::<RoleStyle>("backgroun_opacity = 0.5")
+            .expect_err("misspelled role options must not be silently ignored");
+        assert!(error.to_string().contains("unknown field"));
+    }
 }

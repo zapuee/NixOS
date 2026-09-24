@@ -21,7 +21,7 @@ let
         description = "Named provider input paths read by the Rust host.";
       };
       settings = lib.mkOption {
-        type = toml.type;
+        inherit (toml) type;
         default = { };
         description = "Provider-specific settings passed to the adapter.";
       };
@@ -45,7 +45,7 @@ let
         description = "Adapter output names mapped to generated file paths.";
       };
       settings = lib.mkOption {
-        type = toml.type;
+        inherit (toml) type;
         default = { };
         description = "Target-specific settings passed to the adapter.";
       };
