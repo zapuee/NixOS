@@ -1,0 +1,6 @@
+api = 1
+id = "generic-text"
+kind = "target"
+entry = "main.luau"
+name = "Generic text example"
+description = "Demonstrates an application-neutral named artifact target"

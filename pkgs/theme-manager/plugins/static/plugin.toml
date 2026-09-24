@@ -1,0 +1,6 @@
+api = 1
+id = "static"
+kind = "provider"
+entry = "main.luau"
+name = "Static palette"
+description = "Loads semantic colors declared directly in Theme-Manager configuration."

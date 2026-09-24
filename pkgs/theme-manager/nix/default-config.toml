@@ -1,0 +1,47 @@
+# Self-contained defaults installed with the Nix package. A user config at
+# $XDG_CONFIG_HOME/theme-manager/config.toml takes precedence automatically.
+
+profiles_dir = "$THEME_MANAGER_DATA_DIR/profiles"
+state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
+default_profile = "glass"
+
+[tui]
+vim_keys = true
+
+[provider]
+kind = "luau:static"
+
+[provider.settings.colors]
+primary = "#80d998"
+outline = "#7c9598"
+error = "#ffb4ab"
+shadow = "#000000"
+secondary = "#9ccaff"
+surface = "#0f1512"
+on_surface = "#dfe4de"
+
+[targets.niri]
+adapter = "luau:niri"
+enabled = true
+[targets.niri.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
+[targets.niri.settings]
+global_role = "compositor"
+
+[[targets.niri.settings.windows]]
+role = "browser"
+app_id = "^firefox$"
+use_opacity = true
+
+[[targets.niri.settings.windows]]
+role = "terminal"
+app_id = "^(foot|footclient)$"
+use_opacity = false
+
+[targets.foot]
+adapter = "luau:foot"
+enabled = true
+[targets.foot.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
+[targets.foot.settings]
+role = "terminal"

@@ -1,0 +1,6 @@
+api = 1
+id = "foot"
+kind = "target"
+entry = "main.luau"
+name = "Foot"
+description = "Renders Foot's native background alpha fragment from a semantic role."

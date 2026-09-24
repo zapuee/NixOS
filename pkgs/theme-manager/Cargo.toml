@@ -1,0 +1,33 @@
+[workspace]
+members = [
+  "crates/theme-core",
+  "crates/theme-extension-luau",
+  "crates/theme-manager",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["zap"]
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+crossterm = "0.29"
+fs2 = "0.4"
+blake3 = "1"
+mlua = { version = "0.12.1", features = ["luau", "vendored", "serialize", "send", "error-send"] }
+notify = "8"
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Workspace crates
+theme-core = { path = "crates/theme-core" }
+theme-extension-luau = { path = "crates/theme-extension-luau" }

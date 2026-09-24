@@ -1,0 +1,59 @@
+# Runtime wiring is separate from structure profiles.
+# Change providers/targets here without changing the profile itself.
+
+profiles_dir = "$XDG_CONFIG_HOME/theme-manager/profiles"
+state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
+default_profile = "glass"
+
+[tui]
+# Vim navigation is enabled by default. Set this to false to use only arrows,
+# Tab, Home, and End. `theme-manager tui --no-vim` is a one-run override.
+vim_keys = true
+
+# Dynamic color provider. Noctalia is optional: swap this block for the
+# static provider below and the rest of the engine/targets stay unchanged.
+[provider]
+kind = "luau:noctalia"
+[provider.inputs]
+palette = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
+
+# Static alternative:
+# [provider]
+# kind = "luau:static"
+# [provider.settings.colors]
+# primary = "#80d998"
+# outline = "#7c9598"
+# error = "#ffb4ab"
+# shadow = "#000000"
+# secondary = "#9ccaff"
+# surface = "#0f1512"
+# on_surface = "#dfe4de"
+
+[targets.niri]
+adapter = "luau:niri"
+enabled = true
+[targets.niri.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
+[targets.niri.settings]
+global_role = "compositor"
+
+# Niri only knows semantic role -> app-id bindings. It does not know what
+# "Firefox" or "Foot" mean in the structure profile.
+[[targets.niri.settings.windows]]
+role = "browser"
+app_id = "^firefox$"
+use_opacity = true
+
+[[targets.niri.settings.windows]]
+role = "terminal"
+app_id = "^(foot|footclient)$"
+# Foot applies background alpha natively, so don't fade its whole window.
+use_opacity = false
+
+[targets.foot]
+adapter = "luau:foot"
+enabled = true
+[targets.foot.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
+[targets.foot.settings]
+role = "terminal"

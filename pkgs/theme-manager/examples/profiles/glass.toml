@@ -1,0 +1,54 @@
+schema = 1
+name = "glass"
+description = "Translucent glass-like structure"
+
+# Profiles describe appearance only. They do not name Niri, Firefox, Foot,
+# Noctalia, or any other implementation.
+
+[variables]
+material = "glass"
+
+[variables.opacity]
+primary = 0.25
+secondary = 0.85
+tertiary = 0.10
+
+[variables.radius]
+primary = 1
+secondary = 10
+
+[layout]
+gaps = 8
+outer_gaps = 12
+
+[focus_ring]
+width = 2
+active_opacity = 0.40
+inactive_opacity = 0.25
+urgent_opacity = 0.25
+active_color = "primary"
+inactive_color = "outline"
+urgent_color = "error"
+
+[shadow]
+strength = 1.00
+color = "shadow"
+
+[roles.compositor]
+corner_radius = "primary"
+material = "preferred"
+
+[roles.browser]
+background_opacity = "secondary"
+blur = true
+corner_radius = "primary"
+material = "preferred"
+accent_color = "primary"
+
+[roles.terminal]
+background_opacity = "primary"
+blur = true
+corner_radius = "primary"
+material = "preferred"
+cursor_color = "primary"
+selection_color = "secondary"

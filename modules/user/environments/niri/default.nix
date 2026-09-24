@@ -15,8 +15,7 @@ in
     wayland.windowManager.niri = {
       enable = true;
       extraConfig = ''
-        include optional=true "~/.config/theme-manager/niri.kdl"
-        include optional=true "~/.config/theme-manager/niri-colors.kdl"
+        include optional=true "~/.config/theme-manager/generated/niri.kdl"
       '';
 
       settings = {
@@ -29,18 +28,6 @@ in
           "noctalia"
         ];
         _children = [
-          {
-            window-rule = {
-              match._props = {
-                app-id = "firefox$";
-              };
-        
-              opacity = 0.835;
-              background-effect = {
-                blur = true;
-              };
-            };
-          }
           {
             window-rule = {
               match._props = {

@@ -25,6 +25,12 @@
     };
 
     nixpkgs.config.allowUnfree = true;
+
+    fonts.packages = with pkgs; [
+      noto-fonts
+      noto-fonts-cjk-sans
+      noto-fonts-color-emoji
+    ];
     
     # Ensure nix flakes are enabled
     nix.extraOptions = ''

@@ -31,7 +31,7 @@ in {
         
           include = [
             "~/.config/foot/themes/noctalia"
-            "~/.config/theme-manager/foot.ini"
+            "~/.config/theme-manager/generated/foot.ini"
           ];
         };
 

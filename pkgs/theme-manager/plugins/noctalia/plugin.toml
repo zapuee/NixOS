@@ -1,0 +1,6 @@
+api = 1
+id = "noctalia"
+kind = "provider"
+entry = "main.luau"
+name = "Noctalia palette"
+description = "Converts Noctalia's rendered JSON palette bridge into semantic colors."

@@ -8,6 +8,7 @@
       upscayl
       ollama
       comfyui
+      codex
     ];
   };
 }

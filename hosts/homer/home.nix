@@ -9,6 +9,7 @@
       browser = "firefox"; # firefox
       vpn = "proton"; # proton
       bitwarden.enable = true; # password manager (CLI)
+      theme-manager.enable = true;
 
       desktop-shell = "noctalia"; # noctalia, serpantinum
 

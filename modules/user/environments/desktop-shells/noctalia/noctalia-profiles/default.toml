@@ -15,7 +15,7 @@ order = [ "default" ]
     capsule_padding = 5.0
     capsule_radius = 0
     capsule_thickness = 0.99999998137354851
-    center = [ "bar", "group:g1", "nightlight", "theme" ]
+    center = [ "bar", "group:g1", "nightlight" ]
     concave_edge_corners = false
     contact_shadow = true
     end = [ "media", "tray", "notifications", "clipboard", "volume", "brightness", "control-center", "session" ]
@@ -320,8 +320,7 @@ enabled = [
     "kenn/keybind-cheatsheet",
     "noctalia/wallpaper_depth",
     "dunarand/tmux-provider",
-    "cleboost/ssh-launcher",
-    "zap/theme-manager"
+    "cleboost/ssh-launcher"
 ]
 
 [shell]
@@ -444,10 +443,6 @@ capsule_opacity = 0.0
 [widget.privacy]
 capsule = true
 capsule_opacity = 0.0
-
-[widget.theme]
-type = "zap/theme-manager:theme"
-
 
 [widget.workspaces]
 active_pill_size = 6.1500000000000004

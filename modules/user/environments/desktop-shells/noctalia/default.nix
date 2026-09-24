@@ -1,9 +1,5 @@
 { config, inputs, lib, ... }:
 
-let
-  noctaliaDir =
-    "${config.home.homeDirectory}/NixOS/modules/user/environments/desktop-shells/noctalia";
-in
 {
   imports = [
     inputs.noctalia.homeModules.default
@@ -14,32 +10,14 @@ in
       enable = true;
 
       settings = {
-        plugins.enabled = [
-          "zap/theme-manager"
-        ];
-
-        theme.templates.user."theme-manager-niri" = {
+        theme.templates.user."theme-manager-palette" = {
           input_path =
-            "$XDG_CONFIG_HOME/theme-manager/niri-colors.template.kdl";
+            "$XDG_CONFIG_HOME/theme-manager/integrations/noctalia/palette.template.json";
 
           output_path =
-            "$XDG_CONFIG_HOME/theme-manager/niri-colors.kdl";
+            "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json";
         };
       };
     };
-
-    # Plugin itself
-    xdg.dataFile."noctalia/plugins/theme-manager".source =
-      config.lib.file.mkOutOfStoreSymlink
-        "${noctaliaDir}/plugins/theme-manager";
-
-    # Profiles the plugin can read
-    xdg.dataFile."noctalia/theme-manager/noctalia-profiles".source =
-      config.lib.file.mkOutOfStoreSymlink
-        "${noctaliaDir}/noctalia-profiles";
-
-    xdg.dataFile."noctalia/theme-manager/structure-profiles".source =
-      config.lib.file.mkOutOfStoreSymlink
-        "${noctaliaDir}/structure-profiles";
   };
 }

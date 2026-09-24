@@ -1,0 +1,6 @@
+api = 1
+id = "niri"
+kind = "target"
+entry = "main.luau"
+name = "Niri"
+description = "Renders Niri layout, focus, shadow, and semantic window rules."
