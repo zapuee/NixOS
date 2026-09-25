@@ -1,47 +1,54 @@
-# Self-contained defaults installed with the Nix package. A user config at
-# $XDG_CONFIG_HOME/theme-manager/config.toml takes precedence automatically.
-
 profiles_dir = "$THEME_MANAGER_DATA_DIR/profiles"
 state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
-default_profile = "glass"
+generated_dir = "$XDG_CONFIG_HOME/theme-manager/generated"
+default_theme = "glass"
 
-[tui]
-vim_keys = true
+[color_providers.static]
+kind = "static"
 
-[provider]
-kind = "luau:static"
+[color_palettes.fallback]
+provider = "static"
+source = "static"
 
-[provider.settings.colors]
-primary = "#80d998"
-outline = "#7c9598"
-error = "#ffb4ab"
-shadow = "#000000"
-secondary = "#9ccaff"
+[color_palettes.fallback.colors]
+background = "#0f1512"
+on_background = "#dfe4de"
 surface = "#0f1512"
 on_surface = "#dfe4de"
+primary = "#80d998"
+on_primary = "#00210b"
+secondary = "#9ccaff"
+on_secondary = "#001d33"
+error = "#ffb4ab"
+on_error = "#690005"
+outline = "#7c9598"
+shadow = "#000000"
 
-[targets.niri]
-adapter = "luau:niri"
-enabled = true
-[targets.niri.outputs]
-config = "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
-[targets.niri.settings]
+[theme_bundles.glass]
+structure = "glass"
+palette = "fallback"
+
+[theme_bundles.paper]
+structure = "paper"
+palette = "fallback"
+
+[application_contracts.niri]
+required = ["gaps", "focus_ring", "shadow", "corner_radius"]
+
+[application_contracts.foot]
+required = ["background_alpha"]
+optional = ["window_structure"]
+
+[application_wires.niri]
+adapter = "niri"
 global_role = "compositor"
 
-[[targets.niri.settings.windows]]
-role = "browser"
-app_id = "^firefox$"
-use_opacity = true
-
-[[targets.niri.settings.windows]]
+[[application_wires.niri.windows]]
+application = "foot"
 role = "terminal"
 app_id = "^(foot|footclient)$"
-use_opacity = false
+opacity_owner = "application"
 
-[targets.foot]
-adapter = "luau:foot"
-enabled = true
-[targets.foot.outputs]
-config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
-[targets.foot.settings]
+[application_wires.foot-alpha]
+adapter = "foot"
 role = "terminal"

@@ -1,40 +1,78 @@
 profiles_dir = "$XDG_CONFIG_HOME/theme-manager/profiles"
 state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
-default_profile = "glass"
+generated_dir = "$XDG_CONFIG_HOME/theme-manager/generated"
+appearance_inventory_file = "$XDG_CONFIG_HOME/theme-manager/appearance-inventory.toml"
+default_theme = "glass"
 
-[tui]
-vim_keys = true
+[color_providers.noctalia]
+kind = "noctalia"
 
-[provider]
-kind = "luau:noctalia"
+[color_palettes.noctalia-shell]
+provider = "noctalia"
+source = "shell-json"
+path = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
+mode = "dark"
 
-[provider.inputs]
-palette = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
+[theme_bundles.glass]
+structure = "glass"
+palette = "noctalia-shell"
+cursor = { library = "stylix-cursors", item = "bibata-modern-ice" }
 
-[targets.niri]
-adapter = "luau:niri"
+[theme_bundles.paper]
+structure = "paper"
+palette = "noctalia-shell"
+cursor = { library = "stylix-cursors", item = "bibata-modern-ice" }
 
-[targets.niri.outputs]
-config = "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
+[application_contracts.appearance]
+required = ["cursor_installation", "cursor_selection"]
 
-[targets.niri.settings]
+[application_contracts.niri]
+required = ["gaps", "focus_ring", "shadow", "corner_radius"]
+
+[application_contracts.foot]
+required = ["colors", "font", "background_alpha", "window_structure"]
+optional = ["cursor_color", "selection_color", "padding", "csd", "scrollback", "reload"]
+
+[application_contracts.firefox]
+required = ["colors", "native_messaging", "application_structure", "window_structure"]
+
+[application_contracts.starship]
+required = ["colors", "application_structure"]
+
+[application_wires.niri]
+adapter = "niri"
 global_role = "compositor"
 
-[[targets.niri.settings.windows]]
+[[application_wires.niri.windows]]
+application = "firefox"
 role = "browser"
 app_id = "^firefox$"
-use_opacity = true
+opacity_owner = "compositor"
 
-[[targets.niri.settings.windows]]
+[[application_wires.niri.windows]]
+application = "foot"
 role = "terminal"
 app_id = "^(foot|footclient)$"
-use_opacity = false
+opacity_owner = "application"
 
-[targets.foot]
-adapter = "luau:foot"
-
-[targets.foot.outputs]
-config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
-
-[targets.foot.settings]
+[application_wires.foot-alpha]
+adapter = "foot"
 role = "terminal"
+
+[application_wires.foot-colors]
+adapter = "noctalia-template"
+palette = "noctalia-shell"
+execution = "shell"
+template = "user:foot-colors"
+
+[application_wires.firefox-colors]
+adapter = "noctalia-template"
+palette = "noctalia-shell"
+execution = "shell"
+template = "user:pywalfox"
+
+[application_wires.starship-colors]
+adapter = "noctalia-template"
+palette = "noctalia-shell"
+execution = "shell"
+template = "builtin:starship"

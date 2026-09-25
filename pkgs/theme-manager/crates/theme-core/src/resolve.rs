@@ -35,16 +35,6 @@ fn resolve_number(
         .with_context(|| format!("unknown {category} tier '{name}'"))
 }
 
-fn resolve_material(selector: Option<&str>, preferred: &str) -> Option<String> {
-    selector.map(|value| {
-        if value == "preferred" {
-            preferred.to_string()
-        } else {
-            value.to_string()
-        }
-    })
-}
-
 fn resolve_color(reference: &str, palette: &Palette) -> Result<String> {
     if reference.starts_with('#') {
         Palette::validate_color(reference)?;
@@ -63,6 +53,9 @@ pub fn resolve(profile: &Profile, palette: &Palette) -> Result<ResolvedTheme> {
 
     let gaps = non_negative(profile.layout.gaps.as_f64(), "layout.gaps")?;
     let outer_gaps = non_negative(profile.layout.outer_gaps.as_f64(), "layout.outer_gaps")?;
+    if outer_gaps < gaps {
+        bail!("layout.outer_gaps must be greater than or equal to layout.gaps");
+    }
 
     let focus_ring = ResolvedFocusRing {
         width: non_negative(profile.focus_ring.width.as_f64(), "focus_ring.width")?,
@@ -125,22 +118,6 @@ pub fn resolve(profile: &Profile, palette: &Palette) -> Result<ResolvedTheme> {
                 background_opacity,
                 blur: role.blur,
                 corner_radius,
-                material: resolve_material(role.material.as_deref(), &profile.variables.material),
-                accent_color: role
-                    .accent_color
-                    .as_deref()
-                    .map(|v| resolve_color(v, palette))
-                    .transpose()?,
-                cursor_color: role
-                    .cursor_color
-                    .as_deref()
-                    .map(|v| resolve_color(v, palette))
-                    .transpose()?,
-                selection_color: role
-                    .selection_color
-                    .as_deref()
-                    .map(|v| resolve_color(v, palette))
-                    .transpose()?,
             },
         );
     }
@@ -158,7 +135,8 @@ pub fn resolve(profile: &Profile, palette: &Palette) -> Result<ResolvedTheme> {
 
 #[cfg(test)]
 mod tests {
-    use super::{bounded, non_negative};
+    use super::{bounded, non_negative, resolve};
+    use crate::{Palette, Profile, profile::Numeric};
 
     #[test]
     fn rejects_non_finite_numbers() {
@@ -166,5 +144,25 @@ mod tests {
         assert!(bounded(f64::INFINITY, "value", 0.0, 1.0).is_err());
         assert!(non_negative(f64::NAN, "value").is_err());
         assert!(non_negative(f64::INFINITY, "value").is_err());
+    }
+
+    #[test]
+    fn rejects_outer_gaps_smaller_than_inner_gaps() {
+        let mut profile: Profile =
+            toml::from_str(include_str!("../../../profiles/glass.toml")).unwrap();
+        profile.layout.outer_gaps = Numeric::Integer(4);
+        let palette = Palette {
+            colors: [
+                ("primary", "#80d998"),
+                ("outline", "#7c9598"),
+                ("error", "#ffb4ab"),
+                ("shadow", "#000000"),
+            ]
+            .into_iter()
+            .map(|(key, value)| (key.into(), value.into()))
+            .collect(),
+        };
+        let error = resolve(&profile, &palette).unwrap_err();
+        assert!(error.to_string().contains("outer_gaps"));
     }
 }

@@ -2,8 +2,25 @@
 
 ## Status
 
-Planning document. The existing Theme Manager v0.2 implementation is present
-and working, but the simplification described here has not started.
+Implemented as Theme Manager v0.3. The audited baseline and resolution record
+live in `PHASE-0-INVENTORY.md`; byte-compatible v0.2 Niri/Foot output remains
+pinned by golden fixtures. Phases 0–5 and 7 are complete. Phase 6 was explicitly
+resolved by keeping the CLI as the sole frontend: a TUI remains optional, has no
+demonstrated workflow that the CLI lacks, and therefore is not shipped or pulled
+into minimal/headless installations.
+
+The final implementation includes the qualified
+`stylix-cursors/bibata-modern-ice` library selected by both host bundles. Nix
+configures it through upstream `stylix.cursor` and only the GTK/X11 cursor
+subtargets, then emits the read-only library and capability inventory consumed
+by Theme Manager. All Stylix color and application targets remain disabled, so
+Noctalia and the built-in wires retain their documented ownership.
+
+Verification is complete at repository level: the Rust test/lint/format suite,
+release package and install checks, Nix source checks, full flake check, and both
+host evaluations pass. The pinned Noctalia CLI was also exercised directly for
+headless template rendering and for distinct `m3-content`/`muted` results from
+one image.
 
 This plan replaces the earlier assumption that Stylix must be the foundation of
 the whole theme system. The runtime engine remains independent of every desktop
@@ -122,8 +139,9 @@ or a Noctalia generation scheme.
 Use `scheme` or `variant` for values such as `m3-content` and
 `m3-tonal-spot`. Do not call them `material`: the existing profiles use
 `material` to mean structural surface behavior such as `glass` or `solid`.
-Rename that structural field to `surface_style` during migration so the two
-concepts cannot be confused.
+The migration found that structural field unused and removed it. If a real
+adapter later needs the concept, call it `surface_style` so the two concepts
+cannot be confused.
 
 ### Appearance Library
 
@@ -675,16 +693,17 @@ role = "terminal"
 adapter = "noctalia-template"
 enabled = false
 palette = "noctalia-shell"
-template = "builtin:foot"
+template = "user:foot-colors"
 execution = "shell"
 
-# A shell-independent user template is rendered only inside generated_dir.
-[application_wires.custom-app-noctalia-colors]
+# A shell-independent, embedded repository template is rendered only inside
+# generated_dir.
+[application_wires.normalized-palette]
 adapter = "noctalia-template"
 enabled = false
 palette = "wallpaper"
-template_file = "$XDG_CONFIG_HOME/theme-manager/templates/custom-app.css"
-output = "noctalia/custom-app.css"
+template = "repository:palette"
+output = "noctalia/palette.json"
 execution = "headless"
 
 # Optional: this wire intentionally uses a different Color Palette.
@@ -1070,7 +1089,8 @@ Manager configuration.
 For a headless Noctalia Template Wire:
 
 - render into a private staging directory first;
-- allow an explicit template file or an audited standalone TOML template config;
+- accept only a closed repository template ID whose reviewed bytes are embedded
+  in the binary; do not accept an arbitrary template path;
 - rewrite or reject outputs that do not resolve beneath `generated_dir`;
 - reject `output_path_dynamic`, `pre_hook`, `post_hook`, `undo_hook`, and other
   command-bearing fields in the initial implementation;
@@ -1647,6 +1667,11 @@ core data model.
 
 ### Phase 6: optional TUI
 
+Implementation decision: no TUI is shipped in v0.3. The complete CLI covers the
+normal workflow, and retaining a second frontend would add dependencies and
+state without a demonstrated user need. The requirements below remain the gate
+if a TUI is added later.
+
 - Verify the CLI covers normal operation first.
 - Adapt the TUI to Theme Bundles and their Structure Profile, Color Palette,
   explicit Appearance Library items, Capability Plan, and Application Wires.
@@ -1978,20 +2003,11 @@ The migration is complete when:
 - both hosts pass the verification checklist;
 - obsolete code, dependencies, tests, and documentation are removed.
 
-## First implementation task
+## Implementation record
 
-Start with Phase 0. Produce the ownership matrix and golden Niri/Foot output from
-the current configuration before changing names or deleting code. Include a row
-for every setting currently produced by Noctalia, Niri, Foot, Firefox,
-Starship, and any selected Stylix target. That evidence determines which profile
-fields, runtime controls, and safety machinery survive the simplification.
-
-For each row, record the typed capability, required/optional status, owner,
-explicit source, cadence, concrete setting/file boundary, and evidence that the
-claim is accurate. Draft the Foot and Firefox Application Contracts from that
-inventory and prove or reject every proposed merge/include boundary. Inventory
-the selected cursor, typography, icons, and wallpaper too, including their Nix
-packages, effective values, and intended explicit Stylix library names. Also
-record every selected Noctalia template ID or user template, its output files,
-its hooks, whether it requires the shell, and whether it can instead run through
-the constrained headless wire.
+Phase 0 produced the ownership matrix and golden Niri/Foot output before the
+runtime rewrite. The subsequent phases used that evidence to remove conflicts,
+replace Luau with typed built-ins, add the constrained Noctalia adapter, add the
+Nix-generated Stylix cursor library/inventory, make Niri and Foot includes
+optional, and delete obsolete infrastructure. `PHASE-0-INVENTORY.md` records
+both the original findings and their final resolution.

@@ -1,0 +1,16 @@
+{
+  "background": "#0f1512",
+  "on_background": "#dfe4de",
+  "surface": "#0f1512",
+  "on_surface": "#dfe4de",
+  "primary": "#80d998",
+  "on_primary": "#00210b",
+  "secondary": "#9ccaff",
+  "on_secondary": "#001d33",
+  "tertiary": "#d5baff",
+  "on_tertiary": "#31005e",
+  "error": "#ffb4ab",
+  "on_error": "#690005",
+  "outline": "#7c9598",
+  "shadow": "#000000"
+}

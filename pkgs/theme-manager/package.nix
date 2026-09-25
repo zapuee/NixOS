@@ -6,7 +6,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "theme-manager";
-  version = "0.2.0";
+  version = "0.3.0";
 
   src = lib.fileset.toSource {
     root = ./.;
@@ -15,10 +15,8 @@ rustPlatform.buildRustPackage {
       ./Cargo.toml
       ./Cargo.lock
       ./crates
-      ./plugins
+      ./integrations
       ./profiles
-      ./examples/plugins
-      ./api
       ./nix/default-config.toml
     ];
   };
@@ -37,10 +35,7 @@ rustPlatform.buildRustPackage {
     install -Dm444 nix/default-config.toml "$dataDir/config.toml"
     install -d "$dataDir/profiles"
     cp -R profiles/. "$dataDir/profiles/"
-    cp -R api "$dataDir/luau"
-    cp -R plugins "$dataDir/plugins"
-    install -d "$dataDir/examples"
-    cp -R examples/plugins "$dataDir/examples/plugins"
+    cp -R integrations "$dataDir/integrations"
 
     wrapProgram "$out/bin/theme-manager" \
       --set-default THEME_MANAGER_DATA_DIR "$dataDir"
@@ -57,25 +52,14 @@ rustPlatform.buildRustPackage {
     export XDG_CACHE_HOME="$testHome/cache"
 
     "$out/bin/theme-manager" check
-    "$out/bin/theme-manager" structure check
-    test "$("$out/bin/theme-manager" list --json)" = "$("$out/bin/theme-manager" structure list --json)"
-    "$out/bin/theme-manager" doctor --json | grep -q '"schema": 1'
-    "$out/bin/theme-manager" plugins check
+    "$out/bin/theme-manager" theme list --json | grep -q '"name": "glass"'
+    "$out/bin/theme-manager" structure list --json | grep -q '"name": "paper"'
+    "$out/bin/theme-manager" palette list --json | grep -q '"provider": "static"'
     "$out/bin/theme-manager" apply glass
     test -f "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
     test -f "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
-    "$out/bin/theme-manager" components list --json | grep -q '"target": "foot"'
-    "$out/bin/theme-manager" components disable foot
-    test ! -e "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
-    "$out/bin/theme-manager" components enable foot
-    test -f "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
-    "$out/bin/theme-manager" tui --help | grep -q -- '--no-vim'
-    "$out/bin/theme-manager" status --json | grep -q '"active_profile": "glass"'
-    test -f "$out/share/theme-manager/luau/theme-manager.d.luau"
-    test -f "$out/share/theme-manager/plugins/foot/main.luau"
-    test -f "$out/share/theme-manager/plugins/noctalia/main.luau"
-    test -f "$out/share/theme-manager/plugins/noctalia/palette.template.json"
-    test -f "$out/share/theme-manager/examples/plugins/generic-text/main.luau"
+    "$out/bin/theme-manager" status --json | grep -q '"active_theme": "glass"'
+    test -f "$out/share/theme-manager/integrations/noctalia/palette.json"
 
     runHook postInstallCheck
   '';
@@ -83,7 +67,7 @@ rustPlatform.buildRustPackage {
   passthru.dataDir = "${placeholder "out"}/share/theme-manager";
 
   meta = {
-    description = "Modular desktop theme manager with CLI and TUI frontends";
+    description = "Modular desktop theme manager with validated application wiring";
     mainProgram = "theme-manager";
     license = lib.licenses.mit;
     platforms = lib.platforms.linux;

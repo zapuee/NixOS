@@ -4,10 +4,6 @@ use std::collections::BTreeMap;
 fn default_schema() -> u32 {
     1
 }
-fn default_material() -> String {
-    "solid".into()
-}
-
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Numeric {
@@ -66,8 +62,6 @@ pub struct Variables {
     pub opacity: BTreeMap<String, Numeric>,
     #[serde(default)]
     pub radius: BTreeMap<String, Numeric>,
-    #[serde(default = "default_material")]
-    pub material: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -105,14 +99,6 @@ pub struct RoleStyle {
     pub blur: Option<bool>,
     #[serde(default)]
     pub corner_radius: Option<NumberRef>,
-    #[serde(default)]
-    pub material: Option<String>,
-    #[serde(default)]
-    pub accent_color: Option<String>,
-    #[serde(default)]
-    pub cursor_color: Option<String>,
-    #[serde(default)]
-    pub selection_color: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -154,10 +140,6 @@ pub struct ResolvedRole {
     pub background_opacity: Option<f64>,
     pub blur: Option<bool>,
     pub corner_radius: Option<f64>,
-    pub material: Option<String>,
-    pub accent_color: Option<String>,
-    pub cursor_color: Option<String>,
-    pub selection_color: Option<String>,
 }
 
 #[cfg(test)]

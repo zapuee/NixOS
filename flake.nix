@@ -13,6 +13,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    stylix = {
+      url = "github:nix-community/stylix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     spicetify-nix = {
       url = "github:Gerg-L/spicetify-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -54,6 +59,8 @@
         { pkgs, ... }:
         let
           themeManager = pkgs.callPackage ./pkgs/theme-manager/package.nix { };
+          hostAppearanceInventory =
+            inputs.self.nixosConfigurations.homer.config.home-manager.users.zap.xdg.configFile."theme-manager/appearance-inventory.toml".source;
         in
         {
           packages = {
@@ -63,6 +70,34 @@
 
           checks = {
             theme-manager = themeManager;
+
+            theme-manager-host-plan =
+              pkgs.runCommand "theme-manager-host-plan"
+                {
+                  nativeBuildInputs = [ themeManager ];
+                }
+                ''
+                  export XDG_CONFIG_HOME="$TMPDIR/config"
+                  export XDG_CACHE_HOME="$TMPDIR/cache"
+                  export XDG_STATE_HOME="$TMPDIR/state"
+                  mkdir -p \
+                    "$XDG_CONFIG_HOME/theme-manager" \
+                    "$XDG_CACHE_HOME/theme-manager" \
+                    "$XDG_STATE_HOME"
+                  ln -s ${./pkgs/theme-manager/profiles} "$XDG_CONFIG_HOME/theme-manager/profiles"
+                  ln -s ${hostAppearanceInventory} \
+                    "$XDG_CONFIG_HOME/theme-manager/appearance-inventory.toml"
+                  ln -s \
+                    ${./pkgs/theme-manager/crates/theme-manager/tests/fixtures/noctalia-theme.json} \
+                    "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
+
+                  theme-manager \
+                    --config ${./modules/user/theme-manager/config.toml} \
+                    check glass --json > "$out"
+                  grep -q '"complete": true' "$out"
+                  grep -q '"item": "bibata-modern-ice"' "$out"
+                  grep -q '"capability": "csd"' "$out"
+                '';
 
             nix-source =
               pkgs.runCommand "nix-source-checks"

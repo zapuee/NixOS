@@ -8,5 +8,8 @@
     inputs.theme-manager.homeModules.default
   ];
 
-  programs.theme-manager.enable = true;
+  programs.theme-manager = {
+    enable = true;
+    configFile = inputs.theme-manager + "/nix/default-config.toml";
+  };
 }

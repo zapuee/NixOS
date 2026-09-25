@@ -30,11 +30,17 @@ impl Fixture {
             std::env::temp_dir().join(format!("theme-manager-test-{}-{id}", std::process::id()));
         let profiles = root.join("profiles");
         fs::create_dir_all(&profiles).unwrap();
-        fs::write(
-            profiles.join("glass.toml"),
-            include_str!("../../../profiles/glass.toml"),
-        )
-        .unwrap();
+        for name in ["glass", "paper"] {
+            fs::write(
+                profiles.join(format!("{name}.toml")),
+                match name {
+                    "glass" => include_str!("../../../profiles/glass.toml"),
+                    "paper" => include_str!("../../../profiles/paper.toml"),
+                    _ => unreachable!(),
+                },
+            )
+            .unwrap();
+        }
         Self { root }
     }
 
@@ -42,213 +48,345 @@ impl Fixture {
         self.root.join(relative)
     }
 
-    fn write_config(&self, targets: &str) -> PathBuf {
+    fn write_config(&self, body: &str) -> PathBuf {
         let path = self.path("config.toml");
-        let profiles = self.path("profiles");
-        let state = self.path("state.toml");
-        let config = format!(
-            r##"
-profiles_dir = "{}"
+        fs::write(
+            &path,
+            format!(
+                r#"profiles_dir = "{}"
 state_file = "{}"
-default_profile = "glass"
+generated_dir = "{}"
+default_theme = "glass"
 
-[provider]
-kind = "luau:static"
-
-[provider.settings.colors]
-primary = "#80d998"
-outline = "#7c9598"
-error = "#ffb4ab"
-shadow = "#000000"
-secondary = "#9ccaff"
-surface = "#0f1512"
-on_surface = "#dfe4de"
-
-{targets}
-"##,
-            profiles.display(),
-            state.display(),
-        );
-        fs::write(&path, config).unwrap();
+{body}
+"#,
+                self.path("profiles").display(),
+                self.path("state.toml").display(),
+                self.path("generated").display(),
+            ),
+        )
+        .unwrap();
         path
     }
 
+    fn standard_config(&self) -> PathBuf {
+        self.write_config(STANDARD_BODY)
+    }
+
+    fn command(&self, config: &Path) -> Command {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_theme-manager"));
+        command.arg("--config").arg(config);
+        command
+    }
+
     fn run(&self, config: &Path, args: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_theme-manager"))
-            .env(
-                "THEME_MANAGER_DATA_DIR",
-                Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-            )
-            .arg("--config")
-            .arg(config)
-            .args(args)
-            .output()
-            .unwrap()
+        self.command(config).args(args).output().unwrap()
+    }
+}
+
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+const STANDARD_BODY: &str = r##"
+[color_providers.static]
+kind = "static"
+
+[color_palettes.fallback]
+provider = "static"
+source = "static"
+[color_palettes.fallback.colors]
+background = "#0f1512"
+on_background = "#dfe4de"
+surface = "#0f1512"
+on_surface = "#dfe4de"
+primary = "#80d998"
+on_primary = "#00210b"
+secondary = "#9ccaff"
+on_secondary = "#001d33"
+error = "#ffb4ab"
+on_error = "#690005"
+outline = "#7c9598"
+shadow = "#000000"
+
+[theme_bundles.glass]
+structure = "glass"
+palette = "fallback"
+[theme_bundles.paper]
+structure = "paper"
+palette = "fallback"
+
+[application_contracts.niri]
+required = ["gaps", "focus_ring", "shadow", "corner_radius"]
+[application_contracts.foot]
+required = ["background_alpha"]
+optional = ["window_structure"]
+
+[application_wires.niri]
+adapter = "niri"
+global_role = "compositor"
+[[application_wires.niri.windows]]
+application = "firefox"
+role = "browser"
+app_id = "^firefox$"
+opacity_owner = "compositor"
+[[application_wires.niri.windows]]
+application = "foot"
+role = "terminal"
+app_id = "^(foot|footclient)$"
+opacity_owner = "application"
+
+[application_wires.foot-alpha]
+adapter = "foot"
+role = "terminal"
+"##;
+
+#[test]
+fn glass_and_paper_match_v0_2_golden_outputs() {
+    let fixture = Fixture::new();
+    let config = fixture.standard_config();
+    for (theme, expected_foot, expected_niri) in [
+        (
+            "glass",
+            include_str!("fixtures/v0.2/glass/foot.ini"),
+            include_str!("fixtures/v0.2/glass/niri.kdl"),
+        ),
+        (
+            "paper",
+            include_str!("fixtures/v0.2/paper/foot.ini"),
+            include_str!("fixtures/v0.2/paper/niri.kdl"),
+        ),
+    ] {
+        let apply = fixture.run(&config, &["apply", theme, "--json"]);
+        assert!(
+            apply.status.success(),
+            "{}",
+            String::from_utf8_lossy(&apply.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(fixture.path("generated/foot.ini")).unwrap(),
+            expected_foot
+        );
+        assert_eq!(
+            fs::read_to_string(fixture.path("generated/niri.kdl")).unwrap(),
+            format!("{expected_niri}\n")
+        );
+        let report: Value = serde_json::from_slice(&apply.stdout).unwrap();
+        assert_eq!(report["theme"], theme);
+        assert_eq!(report["capability_plan"]["complete"], true);
     }
 }
 
 #[test]
-fn namespaced_structure_commands_match_legacy_aliases() {
+fn dry_run_renders_and_validates_without_writing() {
     let fixture = Fixture::new();
-    let config = fixture.write_config("");
-    let legacy = fixture.run(&config, &["list", "--json"]);
-    let namespaced = fixture.run(&config, &["structure", "list", "--json"]);
-    assert!(legacy.status.success());
-    assert!(namespaced.status.success());
-    assert_eq!(legacy.stdout, namespaced.stdout);
+    let config = fixture.standard_config();
+    let output = fixture.run(&config, &["apply", "glass", "--dry-run"]);
+    assert!(output.status.success());
+    assert!(!fixture.path("generated").exists());
+    assert!(!fixture.path("state.toml").exists());
 }
 
 #[test]
-fn apply_refuses_unmanaged_output_unless_force_is_explicit() {
+fn missing_required_capability_fails_before_output_changes() {
     let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    fs::write(&output, "user-owned configuration\n").unwrap();
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
+    let config = fixture.write_config(&STANDARD_BODY.replace(
+        "required = [\"background_alpha\"]",
+        "required = [\"background_alpha\", \"colors\"]",
     ));
-
-    let refused = fixture.run(&config, &["apply", "glass"]);
-    assert!(!refused.status.success());
-    assert!(String::from_utf8_lossy(&refused.stderr).contains("--force"));
-    assert_eq!(
-        fs::read_to_string(&output).unwrap(),
-        "user-owned configuration\n"
-    );
-
-    let forced = fixture.run(&config, &["apply", "glass", "--force", "--json"]);
+    let output = fixture.run(&config, &["apply", "glass"]);
+    assert!(!output.status.success());
     assert!(
-        forced.status.success(),
-        "{}",
-        String::from_utf8_lossy(&forced.stderr)
+        String::from_utf8_lossy(&output.stderr).contains("missing required capability 'colors'")
     );
-    let report: Value = serde_json::from_slice(&forced.stdout).unwrap();
-    assert_eq!(
-        report["targets"][0]["forced"][0],
-        output.display().to_string()
-    );
-    assert!(fs::read_to_string(output).unwrap().contains("alpha=0.25"));
+    assert!(!fixture.path("generated").exists());
 }
 
 #[test]
-fn apply_refuses_a_modified_owned_output() {
+fn duplicate_capability_owners_are_rejected() {
     let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
     let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
+        "{STANDARD_BODY}\n[application_wires.second-foot]\nadapter = \"foot\"\nrole = \"terminal\""
     ));
+    let output = fixture.run(&config, &["check", "glass"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("multiple owners"));
+}
 
+#[test]
+fn invalid_palette_preserves_last_valid_outputs() {
+    let fixture = Fixture::new();
+    let config = fixture.standard_config();
     assert!(fixture.run(&config, &["apply", "glass"]).status.success());
-    fs::write(&output, "manually edited\n").unwrap();
-    let refused = fixture.run(&config, &["apply", "glass"]);
-    assert!(!refused.status.success());
-    assert_eq!(fs::read_to_string(output).unwrap(), "manually edited\n");
-}
-
-#[test]
-fn output_preflight_prevents_partial_writes_on_filesystem_errors() {
-    let fixture = Fixture::new();
-    let first = fixture.path("a-foot.ini");
-    let invalid = fixture.path("z-invalid");
-    fs::create_dir_all(&invalid).unwrap();
-    let config = fixture.write_config(&format!(
-        r#"[targets.first]
-adapter = "luau:foot"
-[targets.first.outputs]
-config = "{}"
-[targets.first.settings]
-role = "terminal"
-
-[targets.second]
-adapter = "luau:foot"
-[targets.second.outputs]
-config = "{}"
-[targets.second.settings]
-role = "terminal""#,
-        first.display(),
-        invalid.display(),
-    ));
-
-    let apply = fixture.run(&config, &["apply", "glass"]);
-    assert!(!apply.status.success());
-    assert!(!first.exists());
-    assert!(invalid.is_dir());
-}
-
-#[test]
-fn doctor_has_a_versioned_json_report_and_warnings_do_not_fail() {
-    let fixture = Fixture::new();
-    let config = fixture.write_config("");
-    let doctor = fixture.run(&config, &["doctor", "--json"]);
-    assert!(
-        doctor.status.success(),
-        "{}",
-        String::from_utf8_lossy(&doctor.stderr)
-    );
-    let report: Value = serde_json::from_slice(&doctor.stdout).unwrap();
-    assert_eq!(report["schema"], 1);
-    assert_eq!(report["ok"], true);
-    assert!(
-        report["checks"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|check| check["code"] == "watcher.status_missing")
-    );
-}
-
-#[test]
-fn watcher_recovers_when_a_provider_input_appears_and_reports_health() {
-    let fixture = Fixture::new();
-    let palette = fixture.path("palette.json");
-    let output = fixture.path("foot.ini");
-    let state = fixture.path("state.toml");
-    let config = fixture.path("watch.toml");
+    let niri = fixture.path("generated/niri.kdl");
+    let before = fs::read_to_string(&niri).unwrap();
     fs::write(
         &config,
-        format!(
-            r#"profiles_dir = "{}"
-state_file = "{}"
-default_profile = "glass"
-
-[provider]
-kind = "luau:noctalia"
-[provider.inputs]
-palette = "{}"
-
-[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-"#,
-            fixture.path("profiles").display(),
-            state.display(),
-            palette.display(),
-            output.display(),
-        ),
+        fs::read_to_string(&config)
+            .unwrap()
+            .replace("#80d998", "not-a-color"),
     )
     .unwrap();
+    let failed = fixture.run(&config, &["apply", "paper"]);
+    assert!(!failed.status.success());
+    assert_eq!(fs::read_to_string(niri).unwrap(), before);
+}
 
-    let child = Command::new(env!("CARGO_BIN_EXE_theme-manager"))
-        .env(
-            "THEME_MANAGER_DATA_DIR",
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+#[test]
+fn runtime_works_without_a_niri_wire() {
+    let fixture = Fixture::new();
+    let body = STANDARD_BODY
+        .replace(
+            "[application_contracts.niri]\nrequired = [\"gaps\", \"focus_ring\", \"shadow\", \"corner_radius\"]\n",
+            "",
         )
-        .arg("--config")
-        .arg(&config)
+        .split("[application_wires.niri]")
+        .next()
+        .unwrap()
+        .to_string()
+        + "\n[application_wires.foot-alpha]\nadapter = \"foot\"\nrole = \"terminal\"\n";
+    let config = fixture.write_config(&body);
+    let output = fixture.run(&config, &["apply", "glass"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(fixture.path("generated/foot.ini").exists());
+    assert!(!fixture.path("generated/niri.kdl").exists());
+}
+
+#[test]
+fn removed_wires_leave_no_stale_generated_output() {
+    let fixture = Fixture::new();
+    let config = fixture.standard_config();
+    assert!(fixture.run(&config, &["apply", "glass"]).status.success());
+    assert!(fixture.path("generated/niri.kdl").exists());
+
+    let foot_only = STANDARD_BODY
+        .replace(
+            "[application_contracts.niri]\nrequired = [\"gaps\", \"focus_ring\", \"shadow\", \"corner_radius\"]\n",
+            "",
+        )
+        .split("[application_wires.niri]")
+        .next()
+        .unwrap()
+        .to_string()
+        + "\n[application_wires.foot-alpha]\nadapter = \"foot\"\nrole = \"terminal\"\n";
+    fixture.write_config(&foot_only);
+    let output = fixture.run(&config, &["apply", "glass", "--json"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!fixture.path("generated/niri.kdl").exists());
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(report["wires"].as_array().unwrap().iter().any(|wire| {
+        wire["wire"] == "cleanup"
+            && wire["changed"][0]
+                .as_str()
+                .unwrap()
+                .ends_with("generated/niri.kdl")
+    }));
+}
+
+#[test]
+fn a_wire_can_override_the_bundle_palette() {
+    let fixture = Fixture::new();
+    let body = STANDARD_BODY
+        .replace(
+            "[theme_bundles.glass]",
+            "[color_palettes.alternate]\nprovider = \"static\"\nsource = \"static\"\n[color_palettes.alternate.colors]\nprimary = \"#ff0000\"\noutline = \"#00ff00\"\nerror = \"#0000ff\"\nshadow = \"#ffffff\"\n\n[theme_bundles.glass]",
+        )
+        .replace(
+            "adapter = \"niri\"\nglobal_role",
+            "adapter = \"niri\"\npalette = \"alternate\"\nglobal_role",
+        );
+    let config = fixture.write_config(&body);
+    let output = fixture.run(&config, &["apply", "glass"]);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let niri = fs::read_to_string(fixture.path("generated/niri.kdl")).unwrap();
+    assert!(niri.contains("rgba(255, 0, 0, 0.4)"));
+}
+
+#[cfg(unix)]
+#[test]
+fn shared_palette_is_loaded_once_per_apply() {
+    use std::os::unix::fs::PermissionsExt;
+    let fixture = Fixture::new();
+    let fake = fixture.path("noctalia-counting");
+    let counter = fixture.path("count");
+    fs::write(
+        &fake,
+        r##"#!/bin/sh
+count=0
+if [ -f "$THEME_MANAGER_COUNT_FILE" ]; then read -r count < "$THEME_MANAGER_COUNT_FILE"; fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$THEME_MANAGER_COUNT_FILE"
+printf '{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000"}\n'
+"##,
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o700)).unwrap();
+    fs::write(fixture.path("image.png"), "fake").unwrap();
+    let body = STANDARD_BODY
+        .replace(
+            "[color_providers.static]\nkind = \"static\"",
+            "[color_providers.static]\nkind = \"noctalia\"",
+        )
+        .replace(
+            "provider = \"static\"\nsource = \"static\"\n[color_palettes.fallback.colors]",
+            &format!(
+                "provider = \"static\"\nsource = \"image\"\nimage = \"{}\"\n[unused]",
+                fixture.path("image.png").display()
+            ),
+        );
+    let body = body.split("[unused]").next().unwrap().to_string()
+        + &STANDARD_BODY[STANDARD_BODY.find("[theme_bundles.glass]").unwrap()..];
+    let config = fixture.write_config(&body);
+    let output = fixture
+        .command(&config)
+        .env("THEME_MANAGER_NOCTALIA", &fake)
+        .env("THEME_MANAGER_COUNT_FILE", &counter)
+        .args(["apply", "glass"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(fs::read_to_string(counter).unwrap().trim(), "1");
+}
+
+#[test]
+fn watcher_recovers_when_json_palette_appears() {
+    let fixture = Fixture::new();
+    let palette = fixture.path("palette.json");
+    let body = STANDARD_BODY
+        .replace(
+            "[color_providers.static]\nkind = \"static\"",
+            "[color_providers.static]\nkind = \"json-file\"",
+        )
+        .replace(
+            "provider = \"static\"\nsource = \"static\"\n[color_palettes.fallback.colors]",
+            &format!(
+                "provider = \"static\"\nsource = \"json-file\"\npath = \"{}\"\n[unused]",
+                palette.display()
+            ),
+        );
+    let body = body.split("[unused]").next().unwrap().to_string()
+        + &STANDARD_BODY[STANDARD_BODY.find("[theme_bundles.glass]").unwrap()..];
+    let config = fixture.write_config(&body);
+    let child = fixture
+        .command(&config)
         .arg("watch")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -258,490 +396,218 @@ role = "terminal"
     thread::sleep(Duration::from_millis(200));
     fs::write(
         &palette,
-        r##"{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000","secondary":"#9ccaff","surface":"#0f1512","on_surface":"#dfe4de"}"##,
+        r##"{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000"}"##,
     )
     .unwrap();
-
     let deadline = Instant::now() + Duration::from_secs(5);
-    let health_path = fixture.path("watch-status.json");
-    let mut health = None;
-    while Instant::now() < deadline {
-        health = fs::read_to_string(&health_path)
-            .ok()
-            .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-            .filter(|value| value["last_success_ms"].is_number());
-        if output.exists() && health.is_some() {
-            break;
-        }
+    while Instant::now() < deadline && !fixture.path("generated/foot.ini").exists() {
+        thread::sleep(Duration::from_millis(50));
+    }
+    assert!(fixture.path("generated/foot.ini").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn watcher_reapplies_an_image_palette_without_changing_its_scheme() {
+    use std::os::unix::fs::PermissionsExt;
+    let fixture = Fixture::new();
+    let fake = fixture.path("noctalia-image");
+    fs::write(
+        &fake,
+        r##"#!/bin/sh
+image="$2"
+shift 2
+scheme=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --scheme) scheme="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ "$scheme" = "muted" ] || exit 2
+if [ "$(sed -n '1p' "$image")" = "red" ]; then
+  primary="#aa0000"
+else
+  primary="#2f6846"
+fi
+printf '{"primary":"%s","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000"}\n' "$primary"
+"##,
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o700)).unwrap();
+    let image = fixture.path("wallpaper.png");
+    fs::write(&image, "green\n").unwrap();
+    let config = fixture.write_config(&format!(
+        r#"[color_providers.noctalia]
+kind = "noctalia"
+[color_palettes.wallpaper]
+provider = "noctalia"
+source = "image"
+image = "{}"
+scheme = "muted"
+[theme_bundles.glass]
+structure = "glass"
+palette = "wallpaper"
+[application_contracts.niri]
+required = ["gaps", "focus_ring", "shadow", "corner_radius"]
+[application_wires.niri]
+adapter = "niri"
+global_role = "compositor""#,
+        image.display()
+    ));
+    let child = fixture
+        .command(&config)
+        .env("THEME_MANAGER_NOCTALIA", &fake)
+        .arg("watch")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let _guard = ChildGuard(child);
+    let niri = fixture.path("generated/niri.kdl");
+    let initial_deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < initial_deadline
+        && !fs::read_to_string(&niri)
+            .is_ok_and(|contents| contents.contains("rgba(47, 104, 70, 0.4)"))
+    {
         thread::sleep(Duration::from_millis(50));
     }
     assert!(
-        output.exists(),
-        "watcher did not recover after provider input appeared"
+        fs::read_to_string(&niri)
+            .unwrap()
+            .contains("rgba(47, 104, 70, 0.4)")
     );
-    let health = health.expect("watcher did not report a successful health update");
-    assert_eq!(health["schema"], 1);
-    assert!(health["last_success_ms"].is_number());
-    assert!(health["last_error"].is_null());
-}
 
-impl Drop for Fixture {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.root);
+    fs::write(&image, "red\n").unwrap();
+    let changed_deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < changed_deadline
+        && !fs::read_to_string(&niri)
+            .is_ok_and(|contents| contents.contains("rgba(170, 0, 0, 0.4)"))
+    {
+        thread::sleep(Duration::from_millis(50));
     }
+    assert!(
+        fs::read_to_string(niri)
+            .unwrap()
+            .contains("rgba(170, 0, 0, 0.4)")
+    );
 }
 
+#[cfg(unix)]
 #[test]
-fn components_does_not_require_a_home_or_config() {
-    let output = Command::new(env!("CARGO_BIN_EXE_theme-manager"))
-        .env_remove("HOME")
-        .env_remove("XDG_CONFIG_HOME")
-        .env_remove("THEME_MANAGER_DATA_DIR")
-        .args(["components", "--json"])
+fn headless_noctalia_template_is_staged_and_contained() {
+    use std::os::unix::fs::PermissionsExt;
+    let fixture = Fixture::new();
+    let fake = fixture.path("noctalia");
+    fs::write(
+        &fake,
+        r##"#!/bin/sh
+spec=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -r|--render) spec="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [ -n "$spec" ]; then
+  output="${spec#*:}"
+  printf 'rendered\n' > "$output"
+else
+  printf '{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000"}\n'
+fi
+"##,
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o700)).unwrap();
+    fs::write(fixture.path("theme.json"), "{}").unwrap();
+    let config = fixture.write_config(&format!(
+        r#"[color_providers.noctalia]
+kind = "noctalia"
+[color_palettes.native]
+provider = "noctalia"
+source = "theme-json"
+theme_json = "{}"
+[theme_bundles.glass]
+structure = "glass"
+palette = "native"
+[application_wires.example]
+adapter = "noctalia-template"
+palette = "native"
+execution = "headless"
+template = "repository:palette"
+output = "noctalia/example.txt""#,
+        fixture.path("theme.json").display(),
+    ));
+    let output = fixture
+        .command(&config)
+        .env("THEME_MANAGER_NOCTALIA", &fake)
+        .args(["apply", "glass"])
         .output()
         .unwrap();
-
     assert!(
         output.status.success(),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    let components: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(components["providers"].as_array().unwrap().len(), 0);
-    assert_eq!(components["targets"].as_array().unwrap().len(), 0);
-}
-
-#[test]
-fn official_noctalia_plugin_consumes_a_host_read_json_palette() {
-    let fixture = Fixture::new();
-    let palette = fixture.path("palette.json");
-    let output = fixture.path("foot.ini");
-    fs::write(
-        &palette,
-        r##"{"primary":"#80d998","outline":"#7c9598","error":"#ffb4ab","shadow":"#000000","secondary":"#9ccaff","surface":"#0f1512","on_surface":"#dfe4de"}"##,
-    )
-    .unwrap();
-    let config = fixture.path("noctalia.toml");
-    fs::write(
-        &config,
-        format!(
-            r#"profiles_dir = "{}"
-state_file = "{}"
-
-[provider]
-kind = "luau:noctalia"
-[provider.inputs]
-palette = "{}"
-
-[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-"#,
-            fixture.path("profiles").display(),
-            fixture.path("state.toml").display(),
-            palette.display(),
-            output.display(),
-        ),
-    )
-    .unwrap();
-
-    let apply = fixture.run(&config, &["apply", "glass"]);
-    assert!(
-        apply.status.success(),
-        "{}",
-        String::from_utf8_lossy(&apply.stderr)
-    );
-    assert!(fs::read_to_string(output).unwrap().contains("alpha=0.25"));
-}
-
-#[test]
-fn dry_run_reports_unchanged_outputs_accurately() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    let first = fixture.run(&config, &["apply", "glass"]);
-    assert!(
-        first.status.success(),
-        "{}",
-        String::from_utf8_lossy(&first.stderr)
-    );
-
-    let dry_run = fixture.run(&config, &["apply", "glass", "--dry-run", "--json"]);
-    assert!(
-        dry_run.status.success(),
-        "{}",
-        String::from_utf8_lossy(&dry_run.stderr)
-    );
-    let report: Value = serde_json::from_slice(&dry_run.stdout).unwrap();
-    assert_eq!(report["targets"][0]["changed"].as_array().unwrap().len(), 0);
     assert_eq!(
-        report["targets"][0]["unchanged"].as_array().unwrap().len(),
-        1
+        fs::read_to_string(fixture.path("generated/noctalia/example.txt")).unwrap(),
+        "rendered\n"
     );
 }
 
 #[test]
-fn render_failure_does_not_partially_write_earlier_targets() {
+fn escaping_headless_output_is_rejected_by_typed_config() {
     let fixture = Fixture::new();
-    let foot_output = fixture.path("foot.ini");
-    let niri_output = fixture.path("niri.kdl");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-
-[targets.niri]
-adapter = "luau:niri"
-[targets.niri.outputs]
-config = "{}"
-[targets.niri.settings]
-
-[[targets.niri.settings.windows]]
-role = "missing"
-app_id = "^broken$""#,
-        foot_output.display(),
-        niri_output.display(),
-    ));
-
-    let apply = fixture.run(&config, &["apply", "glass"]);
-    assert!(!apply.status.success());
-    assert!(!foot_output.exists());
+    let config = fixture.write_config(
+        r#"[color_providers.noctalia]
+kind = "noctalia"
+[color_palettes.native]
+provider = "noctalia"
+source = "theme-json"
+theme_json = "/tmp/theme.json"
+[theme_bundles.glass]
+structure = "glass"
+palette = "native"
+[application_wires.example]
+adapter = "noctalia-template"
+palette = "native"
+execution = "headless"
+template = "repository:palette"
+output = "../escape""#,
+    );
+    let output = fixture.run(&config, &["check", "glass"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("beneath generated_dir"));
 }
 
 #[test]
-fn check_rejects_target_output_collisions() {
+fn noctalia_template_wires_require_matching_native_palette_authority() {
     let fixture = Fixture::new();
-    let shared_output = fixture.path("shared.conf");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-
-[targets.niri]
-adapter = "luau:niri"
-[targets.niri.outputs]
-config = "{}""#,
-        shared_output.display(),
-        shared_output.display(),
+    let static_config = fixture.write_config(&format!(
+        "{STANDARD_BODY}\n[application_wires.template]\nadapter = \"noctalia-template\"\npalette = \"fallback\"\nexecution = \"shell\"\ntemplate = \"builtin:starship\""
     ));
+    let output = fixture.run(&static_config, &["check", "glass"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Noctalia-backed palette"));
 
-    let check = fixture.run(&config, &["check", "glass"]);
-    assert!(!check.status.success());
-    assert!(String::from_utf8_lossy(&check.stderr).contains("both write"));
-}
-
-#[test]
-fn check_rejects_lexically_aliased_output_collisions() {
-    let fixture = Fixture::new();
-    let shared_output = fixture.path("shared.conf");
-    let aliased_output = fixture.path("unused/../shared.conf");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-
-[targets.niri]
-adapter = "luau:niri"
-[targets.niri.outputs]
-config = "{}""#,
-        shared_output.display(),
-        aliased_output.display(),
+    let image_config = fixture.write_config(&format!(
+        r#"[color_providers.noctalia]
+kind = "noctalia"
+[color_palettes.native]
+provider = "noctalia"
+source = "image"
+image = "{}"
+[theme_bundles.glass]
+structure = "glass"
+palette = "native"
+[application_wires.template]
+adapter = "noctalia-template"
+palette = "native"
+execution = "shell"
+template = "builtin:starship""#,
+        fixture.path("wallpaper.png").display()
     ));
-
-    let check = fixture.run(&config, &["check", "glass"]);
-    assert!(!check.status.success());
-    assert!(String::from_utf8_lossy(&check.stderr).contains("both write"));
-}
-
-#[test]
-fn component_toggle_removes_and_restores_generated_output() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    let apply = fixture.run(&config, &["apply", "glass"]);
-    assert!(
-        apply.status.success(),
-        "{}",
-        String::from_utf8_lossy(&apply.stderr)
-    );
-    assert!(output.is_file());
-
-    let disable = fixture.run(&config, &["components", "disable", "foot", "--json"]);
-    assert!(
-        disable.status.success(),
-        "{}",
-        String::from_utf8_lossy(&disable.stderr)
-    );
-    assert!(!output.exists());
-
-    let apply_disabled = fixture.run(&config, &["apply", "glass"]);
-    assert!(
-        apply_disabled.status.success(),
-        "{}",
-        String::from_utf8_lossy(&apply_disabled.stderr)
-    );
-    assert!(!output.exists());
-
-    let list = fixture.run(&config, &["components", "list", "--json"]);
-    assert!(
-        list.status.success(),
-        "{}",
-        String::from_utf8_lossy(&list.stderr)
-    );
-    let targets: Value = serde_json::from_slice(&list.stdout).unwrap();
-    assert_eq!(targets[0]["target"], "foot");
-    assert_eq!(targets[0]["enabled"], false);
-
-    let enable = fixture.run(&config, &["components", "enable", "foot", "--json"]);
-    assert!(
-        enable.status.success(),
-        "{}",
-        String::from_utf8_lossy(&enable.stderr)
-    );
-    assert!(output.is_file());
-}
-
-#[test]
-fn component_disable_refuses_to_delete_unmanaged_files() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    fs::write(&output, "# user-owned configuration\n").unwrap();
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    let disable = fixture.run(&config, &["components", "disable", "foot"]);
-    assert!(!disable.status.success());
-    assert!(String::from_utf8_lossy(&disable.stderr).contains("not owned by theme-manager"));
-    assert_eq!(
-        fs::read_to_string(&output).unwrap(),
-        "# user-owned configuration\n"
-    );
-
-    let list = fixture.run(&config, &["components", "list", "--json"]);
-    let targets: Value = serde_json::from_slice(&list.stdout).unwrap();
-    assert_eq!(targets[0]["enabled"], true);
-}
-
-#[test]
-fn component_disable_refuses_modified_generated_files_even_with_marker() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    assert!(fixture.run(&config, &["apply", "glass"]).status.success());
-    let mut modified = fs::read_to_string(&output).unwrap();
-    modified.push_str("# manually changed\n");
-    fs::write(&output, &modified).unwrap();
-
-    let disable = fixture.run(&config, &["components", "disable", "foot"]);
-    assert!(!disable.status.success());
-    assert!(String::from_utf8_lossy(&disable.stderr).contains("has changed"));
-    assert_eq!(fs::read_to_string(&output).unwrap(), modified);
-}
-
-#[test]
-fn declaratively_disabled_component_cannot_be_enabled_at_runtime() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-enabled = false
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    let list = fixture.run(&config, &["components", "list", "--json"]);
-    assert!(
-        list.status.success(),
-        "{}",
-        String::from_utf8_lossy(&list.stderr)
-    );
-    let targets: Value = serde_json::from_slice(&list.stdout).unwrap();
-    assert_eq!(targets[0]["configured"], true);
-    assert_eq!(targets[0]["toggleable"], false);
-    assert_eq!(targets[0]["enabled"], false);
-
-    let enable = fixture.run(&config, &["components", "enable", "foot"]);
-    assert!(!enable.status.success());
-    assert!(String::from_utf8_lossy(&enable.stderr).contains("disabled in config"));
-    assert!(!output.exists());
-}
-
-#[test]
-fn failed_component_enable_rolls_back_runtime_state() {
-    let fixture = Fixture::new();
-    let output = fixture.path("foot.ini");
-    let config = fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal""#,
-        output.display(),
-    ));
-
-    assert!(fixture.run(&config, &["apply", "glass"]).status.success());
-    assert!(
-        fixture
-            .run(&config, &["components", "disable", "foot"])
-            .status
-            .success()
-    );
-    assert!(!output.exists());
-
-    fixture.write_config(&format!(
-        r#"[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "missing""#,
-        output.display(),
-    ));
-    let enable = fixture.run(&config, &["components", "enable", "foot"]);
-    assert!(!enable.status.success());
-    assert!(String::from_utf8_lossy(&enable.stderr).contains("rolled back"));
-    assert!(!output.exists());
-
-    let list = fixture.run(&config, &["components", "list", "--json"]);
-    let targets: Value = serde_json::from_slice(&list.stdout).unwrap();
-    assert_eq!(targets[0]["enabled"], false);
-}
-
-#[test]
-fn generic_luau_target_is_discovered_applied_and_safely_toggled() {
-    let fixture = Fixture::new();
-    let plugin = fixture.path("plugins/generic-text");
-    fs::create_dir_all(&plugin).unwrap();
-    fs::write(
-        plugin.join("plugin.toml"),
-        r#"api = 1
-id = "generic-text"
-kind = "target"
-entry = "main.luau"
-"#,
-    )
-    .unwrap();
-    fs::write(
-        plugin.join("main.luau"),
-        r#"return {
-    render = function(ctx)
-        return { document = "{\"profile\":\"" .. ctx.theme.profile .. "\"}\n" }
-    end,
-}
-"#,
-    )
-    .unwrap();
-
-    let output = fixture.path("application/theme.json");
-    let config = fixture.write_config(&format!(
-        r#"[extensions]
-dirs = ["{}"]
-
-[targets.desktop-theme]
-adapter = "luau:generic-text"
-
-[targets.desktop-theme.outputs]
-document = "{}""#,
-        fixture.path("plugins").display(),
-        output.display(),
-    ));
-
-    let plugins = fixture.run(&config, &["plugins", "check"]);
-    assert!(
-        plugins.status.success(),
-        "{}",
-        String::from_utf8_lossy(&plugins.stderr)
-    );
-
-    let apply = fixture.run(&config, &["apply", "glass"]);
-    assert!(
-        apply.status.success(),
-        "{}",
-        String::from_utf8_lossy(&apply.stderr)
-    );
-    assert_eq!(
-        fs::read_to_string(&output).unwrap(),
-        "{\"profile\":\"glass\"}\n"
-    );
-
-    let list = fixture.run(&config, &["components", "list", "--json"]);
-    let targets: Value = serde_json::from_slice(&list.stdout).unwrap();
-    let dynamic = targets
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|target| target["target"] == "desktop-theme")
-        .unwrap();
-    assert_eq!(dynamic["adapter"], "luau:generic-text");
-
-    let disable = fixture.run(&config, &["components", "disable", "desktop-theme"]);
-    assert!(
-        disable.status.success(),
-        "{}",
-        String::from_utf8_lossy(&disable.stderr)
-    );
-    assert!(!output.exists());
-
-    assert!(
-        fixture
-            .run(&config, &["components", "enable", "desktop-theme"])
-            .status
-            .success()
-    );
-    fs::write(&output, "user changed this file\n").unwrap();
-    let refuse = fixture.run(&config, &["components", "disable", "desktop-theme"]);
-    assert!(!refuse.status.success());
-    assert!(String::from_utf8_lossy(&refuse.stderr).contains("has changed"));
-    assert!(output.exists());
+    let output = fixture.run(&image_config, &["check", "glass"]);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("shell-json palette authority"));
 }

@@ -31,10 +31,6 @@
           ) "~/.config/foot/themes/noctalia";
         };
 
-        colors-dark = {
-          alpha = 0.5;
-        };
-
         scrollback = {
           lines = 10000;
         };

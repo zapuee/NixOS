@@ -1,421 +1,647 @@
-use crate::registry::Registry;
+use crate::{
+    adapters,
+    config::{
+        ApplicationWire, ColorPaletteConfig, ColorProviderConfig, Config, NoctaliaExecution,
+        PaletteSource, validate_relative_output,
+    },
+    providers,
+};
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
-    io::ErrorKind,
     path::{Path, PathBuf},
+    process::Command,
+    sync::atomic::{AtomicU64, Ordering},
 };
 use theme_core::{
-    Config, Engine, GENERATED_MARKER,
-    paths::canonical_output_path,
-    state,
-    transaction::{self, Operation},
+    AppearanceInventory, CapabilityPlan, LibrarySelectionStatus, Profile, ResolvedTheme,
+    build_plan,
+    fs::{contents_changed, write_if_changed},
+    paths::{canonical_output_path, expand_path},
+    resolve, state,
 };
 
+static NEXT_STAGING: AtomicU64 = AtomicU64::new(0);
+
 #[derive(Debug, Clone, Serialize)]
-pub struct TargetStatus {
-    pub target: String,
-    pub adapter: String,
-    pub configured: bool,
-    pub toggleable: bool,
-    pub enabled: bool,
+pub struct ThemeSummary {
+    pub name: String,
+    pub active: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct TargetChangeReport {
-    pub target: String,
-    pub enabled: bool,
+pub struct StructureSummary {
+    pub name: String,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PaletteSummary {
+    pub name: String,
+    pub provider: String,
+    pub source: PaletteSource,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WireApplyReport {
+    pub wire: String,
     pub changed: Vec<PathBuf>,
-    pub removed: Vec<PathBuf>,
+    pub unchanged: Vec<PathBuf>,
+    pub delegated: bool,
 }
 
-struct TargetControl {
-    status: TargetStatus,
-    output_paths: Vec<PathBuf>,
+#[derive(Debug, Clone, Serialize)]
+pub struct ApplyReport {
+    pub theme: String,
+    pub structure: String,
+    pub palette: String,
+    pub dry_run: bool,
+    pub capability_plan: CapabilityPlan,
+    pub library_selections: Vec<LibrarySelectionStatus>,
+    pub wires: Vec<WireApplyReport>,
+}
+
+struct Prepared {
+    report: ApplyReport,
+    artifacts: Vec<PreparedArtifact>,
+    delegated_wires: Vec<String>,
+}
+
+struct PreparedArtifact {
+    wire: String,
+    path: PathBuf,
+    contents: String,
 }
 
 pub struct Runtime {
-    pub engine: Engine,
+    pub config: Config,
     pub config_path: PathBuf,
-    target_controls: BTreeMap<String, TargetControl>,
-    extension_watch_paths: Vec<PathBuf>,
+    pub inventory: AppearanceInventory,
 }
 
 impl Runtime {
     pub fn load(path: Option<&Path>) -> Result<Self> {
         let (config, config_path) = Config::load(path)?;
-        let registry = Registry::load(&config)?;
-
-        let provider_settings = config.provider.settings_value();
-        let provider = registry
-            .build_provider(&config.provider.kind, &provider_settings)
-            .with_context(|| format!("failed to initialize provider '{}'", config.provider.kind))?;
-
-        let state_file = config.state_file()?;
-        let current_state = state::with_lock(&state_file, || {
-            transaction::recover(&state_file)?;
-            state::read(&state_file)
-        })?;
-        let mut target_controls = BTreeMap::new();
-        let mut targets = Vec::new();
-        let mut output_owners = BTreeMap::new();
-        for (instance, settings) in &config.targets {
-            let (adapter, adapter_settings) = target_adapter(instance, settings)?;
-            let target = registry
-                .build_target(instance, &adapter, &adapter_settings)
-                .with_context(|| {
-                    format!("failed to initialize target '{instance}' with adapter '{adapter}'")
-                })?;
-            let control =
-                target_controls
-                    .entry(instance.clone())
-                    .or_insert_with(|| TargetControl {
-                        status: TargetStatus {
-                            target: instance.clone(),
-                            adapter: adapter.clone(),
-                            configured: false,
-                            toggleable: false,
-                            enabled: false,
-                        },
-                        output_paths: Vec::new(),
-                    });
-            control.status.adapter.clone_from(&adapter);
-            control.status.configured = true;
-
-            if let Some(target) = target {
-                control.output_paths = target.output_paths().with_context(|| {
-                    format!("failed to resolve outputs for target '{instance}'")
-                })?;
-                for output in &control.output_paths {
-                    let collision_key = canonical_output_path(output).with_context(|| {
-                        format!(
-                            "failed to resolve output for target '{instance}': {}",
-                            output.display()
-                        )
-                    })?;
-                    if let Some(previous) = output_owners.insert(collision_key, instance.as_str()) {
-                        bail!(
-                            "targets '{previous}' and '{instance}' both write {}",
-                            output.display()
-                        );
-                    }
-                }
-                control.status.toggleable = true;
-                control.status.enabled = !current_state.disabled_targets.contains(instance);
-                targets.push(target);
-            }
-        }
-
-        let extension_watch_paths = registry.extension_watch_paths().to_vec();
-
-        let engine = Engine::new(config, provider, targets)
-            .with_disabled_targets(current_state.disabled_targets);
-
+        let inventory_path = config.appearance_inventory_file()?;
+        let inventory = AppearanceInventory::load(inventory_path.as_deref())?;
         Ok(Self {
-            engine,
+            config,
             config_path,
-            target_controls,
-            extension_watch_paths,
+            inventory,
         })
     }
 
-    pub fn target_statuses(&self) -> Vec<TargetStatus> {
-        self.target_controls
-            .values()
-            .map(|control| control.status.clone())
-            .collect()
+    pub fn active_theme(&self) -> Result<Option<String>> {
+        let current = state::read(&self.config.state_file()?)?;
+        Ok(current
+            .active_theme
+            .or_else(|| self.config.default_theme.clone()))
     }
 
-    pub fn diagnostic_outputs(&self) -> Vec<(String, PathBuf)> {
-        self.target_controls
-            .iter()
-            .flat_map(|(target, control)| {
-                control
-                    .output_paths
-                    .iter()
-                    .cloned()
-                    .map(|path| (target.clone(), path))
+    pub fn themes(&self) -> Result<Vec<ThemeSummary>> {
+        let active = self.active_theme()?;
+        Ok(self
+            .config
+            .theme_bundles
+            .keys()
+            .map(|name| ThemeSummary {
+                name: name.clone(),
+                active: active.as_deref() == Some(name),
             })
-            .collect()
+            .collect())
     }
 
-    pub fn set_target_enabled(&self, target: &str, enabled: bool) -> Result<TargetChangeReport> {
-        let control = self
-            .target_controls
-            .get(target)
-            .ok_or_else(|| anyhow::anyhow!("unknown target '{target}'"))?;
-        if !control.status.configured {
-            bail!("target '{target}' is not configured");
-        }
-        if !control.status.toggleable {
-            bail!(
-                "target '{target}' is disabled in config; set enabled = true before using runtime controls"
-            );
-        }
-
-        let mut report = TargetChangeReport {
-            target: target.to_string(),
-            enabled,
-            changed: Vec::new(),
-            removed: Vec::new(),
-        };
-        let state_file = self.engine.state_file()?;
-        let changed =
-            state::with_lock(&state_file, || {
-                transaction::recover(&state_file)?;
-                let mut current_state = state::read(&state_file)?;
-                let currently_enabled = !current_state.disabled_targets.contains(target);
-                if currently_enabled == enabled {
-                    return Ok(false);
-                }
-
-                let mut removals = Vec::new();
-                if !enabled {
-                    let owned =
-                        validate_owned_outputs(&control.output_paths, target, &mut current_state)?;
-                    report.removed = owned.iter().map(|(path, _)| path.clone()).collect();
-                    removals.extend(owned.into_iter().map(|(path, expected_hash)| {
-                        Operation::Remove {
-                            path,
-                            expected_hash,
-                        }
-                    }));
-                }
-
-                if enabled {
-                    current_state.disabled_targets.remove(target);
-                } else {
-                    current_state.disabled_targets.insert(target.to_string());
-                }
-                transaction::commit(&state_file, removals, &mut current_state)?;
-                Ok(true)
-            })?;
-        if !changed {
-            return Ok(report);
-        }
-
-        if enabled {
-            let refreshed = Self::load(Some(&self.config_path))?;
-            if let Some(profile) = refreshed.engine.active_profile()? {
-                match refreshed.engine.reapply(&profile) {
-                    Ok(apply) => {
-                        if let Some(target_report) = apply
-                            .targets
-                            .into_iter()
-                            .find(|candidate| candidate.target == target)
-                        {
-                            report.changed = target_report.changed;
-                        }
-                    }
-                    Err(err) => {
-                        let rollback = state::with_lock(&state_file, || {
-                            transaction::recover(&state_file)?;
-                            let mut current_state = state::read(&state_file)?;
-                            current_state.disabled_targets.insert(target.to_string());
-                            let removed = match validate_owned_outputs(
-                                &control.output_paths,
-                                target,
-                                &mut current_state,
-                            ) {
-                                Ok(removed) => removed,
-                                Err(error) => {
-                                    state::write(&state_file, &current_state)?;
-                                    return Err(error);
-                                }
-                            };
-                            let operations = removed
-                                .into_iter()
-                                .map(|(path, expected_hash)| Operation::Remove {
-                                    path,
-                                    expected_hash,
-                                })
-                                .collect();
-                            transaction::commit(&state_file, operations, &mut current_state)?;
-                            Ok(())
-                        });
-                        if let Err(rollback_err) = rollback {
-                            return Err(rollback_err).with_context(|| {
-                                format!(
-                                    "failed to enable target '{target}' ({err:#}); rollback was incomplete"
-                                )
-                            });
-                        }
-                        return Err(err).with_context(|| {
-                            format!(
-                                "failed to enable target '{target}'; the change was rolled back"
-                            )
-                        });
-                    }
+    pub fn structures(&self) -> Result<Vec<StructureSummary>> {
+        let active = self
+            .active_bundle()?
+            .map(|(_, bundle)| bundle.structure.as_str());
+        let mut names = Vec::new();
+        let dir = self.config.profiles_dir()?;
+        if dir.is_dir() {
+            for entry in fs::read_dir(&dir)
+                .with_context(|| format!("failed to list structures in {}", dir.display()))?
+            {
+                let path = entry?.path();
+                if path.extension().and_then(|value| value.to_str()) == Some("toml")
+                    && let Some(name) = path.file_stem().and_then(|value| value.to_str())
+                {
+                    names.push(StructureSummary {
+                        name: name.into(),
+                        active: active == Some(name),
+                    });
                 }
             }
         }
+        names.sort_by(|left, right| left.name.cmp(&right.name));
+        Ok(names)
+    }
 
-        Ok(report)
+    pub fn palettes(&self) -> Result<Vec<PaletteSummary>> {
+        let active = self
+            .active_bundle()?
+            .map(|(_, bundle)| bundle.palette.as_str());
+        Ok(self
+            .config
+            .color_palettes
+            .iter()
+            .map(|(name, palette)| PaletteSummary {
+                name: name.clone(),
+                provider: palette.provider.clone(),
+                source: palette.source,
+                active: active == Some(name.as_str()),
+            })
+            .collect())
+    }
+
+    pub fn plan(&self, theme: &str) -> Result<(CapabilityPlan, Vec<LibrarySelectionStatus>)> {
+        let bundle = self
+            .config
+            .theme_bundles
+            .get(theme)
+            .with_context(|| format!("unknown theme bundle '{theme}'"))?;
+        let selections = self.inventory.validate_bundle(bundle)?;
+        let mut claims = self.inventory.claims.clone();
+        for (name, wire) in &self.config.application_wires {
+            if wire.enabled() {
+                self.validate_wire_palette(name, wire)?;
+                claims.extend(adapters::claims(name, wire)?);
+            }
+        }
+        Ok((
+            build_plan(&self.config.application_contracts, claims),
+            selections,
+        ))
+    }
+
+    pub fn check(&self, theme: &str) -> Result<ApplyReport> {
+        let prepared = self.prepare(theme, true)?;
+        prepared.report.capability_plan.require_complete()?;
+        Ok(prepared.report)
+    }
+
+    pub fn apply(&self, theme: &str, dry_run: bool) -> Result<ApplyReport> {
+        let state_path = self.config.state_file()?;
+        state::with_lock(&state_path, || {
+            let mut prepared = self.prepare(theme, dry_run)?;
+            prepared.report.capability_plan.require_complete()?;
+            if dry_run {
+                return Ok(prepared.report);
+            }
+
+            let desired_paths = prepared
+                .artifacts
+                .iter()
+                .map(|artifact| artifact.path.clone())
+                .collect::<BTreeSet<_>>();
+            let mut reports = BTreeMap::<String, WireApplyReport>::new();
+            for artifact in prepared.artifacts {
+                let changed = contents_changed(&artifact.path, &artifact.contents)?;
+                let report =
+                    reports
+                        .entry(artifact.wire.clone())
+                        .or_insert_with(|| WireApplyReport {
+                            wire: artifact.wire,
+                            changed: Vec::new(),
+                            unchanged: Vec::new(),
+                            delegated: false,
+                        });
+                if changed {
+                    write_if_changed(&artifact.path, &artifact.contents)?;
+                    report.changed.push(artifact.path);
+                } else {
+                    report.unchanged.push(artifact.path);
+                }
+            }
+            self.remove_stale_outputs(&desired_paths, &mut reports)?;
+
+            let mut current = state::read(&state_path)?;
+            current.active_theme = Some(theme.into());
+            state::write(&state_path, &current)?;
+
+            if !prepared.delegated_wires.is_empty() {
+                apply_shell_templates(&prepared.delegated_wires)?;
+                for wire in prepared.delegated_wires {
+                    reports
+                        .entry(wire.clone())
+                        .or_insert_with(|| WireApplyReport {
+                            wire,
+                            changed: Vec::new(),
+                            unchanged: Vec::new(),
+                            delegated: true,
+                        })
+                        .delegated = true;
+                }
+            }
+            prepared.report.wires = reports.into_values().collect();
+            Ok(prepared.report)
+        })
     }
 
     pub fn watch_paths(&self) -> Result<Vec<PathBuf>> {
-        let mut paths = Vec::new();
-
-        add_watch_locations(&mut paths, &self.config_path);
-
-        let profile_dir = self.engine.profile_dir()?;
-        add_watch_locations(&mut paths, &profile_dir);
-        if profile_dir.is_dir() {
-            for entry in fs::read_dir(&profile_dir).with_context(|| {
-                format!("failed to inspect profiles in {}", profile_dir.display())
-            })? {
-                let path = entry?.path();
-                if path.extension().and_then(|value| value.to_str()) == Some("toml") {
-                    add_watch_locations(&mut paths, &path);
-                }
+        let mut paths = vec![
+            self.config_path.clone(),
+            self.config.profiles_dir()?,
+            self.config.state_file()?,
+        ];
+        if let Some(inventory) = self.config.appearance_inventory_file()? {
+            paths.push(inventory);
+        }
+        let palettes = self
+            .active_bundle()?
+            .map(|(_, bundle)| self.palette_names(bundle))
+            .unwrap_or_default();
+        for name in palettes {
+            let palette = &self.config.color_palettes[&name];
+            let path = match palette.source {
+                PaletteSource::JsonFile | PaletteSource::ShellJson => palette.path.as_deref(),
+                PaletteSource::Image => palette.image.as_deref(),
+                PaletteSource::ThemeJson => palette.theme_json.as_deref(),
+                PaletteSource::Static => None,
+            };
+            if let Some(path) = path {
+                paths.push(expand_path(path)?);
             }
         }
-
-        add_watch_locations(&mut paths, &self.engine.state_file()?);
-
-        for provider_path in self.engine.provider_watch_paths() {
-            add_watch_locations(&mut paths, &provider_path);
-        }
-
-        for extension_path in &self.extension_watch_paths {
-            add_watch_locations(&mut paths, extension_path);
-            add_child_directories(&mut paths, extension_path)?;
-        }
-
         paths.sort();
         paths.dedup();
         Ok(paths)
     }
+
+    fn prepare(&self, theme: &str, dry_run: bool) -> Result<Prepared> {
+        let bundle = self
+            .config
+            .theme_bundles
+            .get(theme)
+            .with_context(|| format!("unknown theme bundle '{theme}'"))?;
+        let (plan, selections) = self.plan(theme)?;
+        plan.require_complete()?;
+
+        let mut palettes = BTreeMap::new();
+        for name in self.palette_names(bundle) {
+            palettes.insert(
+                name.clone(),
+                providers::load(&self.config, &name)
+                    .with_context(|| format!("failed to load palette '{name}'"))?,
+            );
+        }
+        let profile = self.load_profile(&bundle.structure)?;
+        let mut themes = BTreeMap::<String, ResolvedTheme>::new();
+        for (name, palette) in &palettes {
+            themes.insert(
+                name.clone(),
+                resolve::resolve(&profile, &palette.colors)
+                    .with_context(|| format!("failed to resolve palette '{name}'"))?,
+            );
+        }
+
+        let generated_dir = self.config.generated_dir()?;
+        let mut artifacts = Vec::new();
+        let mut delegated_wires = Vec::new();
+        let mut owners = BTreeMap::<PathBuf, String>::new();
+        for (name, wire) in &self.config.application_wires {
+            if !wire.enabled() {
+                continue;
+            }
+            let palette_name = wire.palette_override().unwrap_or(&bundle.palette);
+            match wire {
+                ApplicationWire::NoctaliaTemplate {
+                    execution: NoctaliaExecution::Shell,
+                    ..
+                } => delegated_wires.push(name.clone()),
+                ApplicationWire::NoctaliaTemplate {
+                    execution: NoctaliaExecution::Headless,
+                    template,
+                    output,
+                    ..
+                } => {
+                    let palette = &self.config.color_palettes[palette_name];
+                    let contents = render_headless_template(
+                        name,
+                        palette_name,
+                        palette,
+                        adapters::headless_template(template)?,
+                        output.as_deref().expect("validated output"),
+                    )?;
+                    let path = safe_output_path(&generated_dir, output.as_deref().unwrap())?;
+                    register_output(&mut owners, name, &path)?;
+                    artifacts.push(PreparedArtifact {
+                        wire: name.clone(),
+                        path,
+                        contents,
+                    });
+                }
+                _ => {
+                    let theme = &themes[palette_name];
+                    if let Some(rendered) = adapters::render(name, wire, theme)? {
+                        let path = safe_output_path(&generated_dir, &rendered.relative_path)?;
+                        register_output(&mut owners, name, &path)?;
+                        artifacts.push(PreparedArtifact {
+                            wire: rendered.wire,
+                            path,
+                            contents: rendered.contents,
+                        });
+                    }
+                }
+            }
+        }
+
+        let mut reports = BTreeMap::<String, WireApplyReport>::new();
+        for artifact in &artifacts {
+            let report = reports
+                .entry(artifact.wire.clone())
+                .or_insert_with(|| WireApplyReport {
+                    wire: artifact.wire.clone(),
+                    changed: Vec::new(),
+                    unchanged: Vec::new(),
+                    delegated: false,
+                });
+            if contents_changed(&artifact.path, &artifact.contents)? {
+                report.changed.push(artifact.path.clone());
+            } else {
+                report.unchanged.push(artifact.path.clone());
+            }
+        }
+        for wire in &delegated_wires {
+            reports.insert(
+                wire.clone(),
+                WireApplyReport {
+                    wire: wire.clone(),
+                    changed: Vec::new(),
+                    unchanged: Vec::new(),
+                    delegated: !dry_run,
+                },
+            );
+        }
+        Ok(Prepared {
+            report: ApplyReport {
+                theme: theme.into(),
+                structure: bundle.structure.clone(),
+                palette: bundle.palette.clone(),
+                dry_run,
+                capability_plan: plan,
+                library_selections: selections,
+                wires: reports.into_values().collect(),
+            },
+            artifacts,
+            delegated_wires,
+        })
+    }
+
+    fn active_bundle(&self) -> Result<Option<(String, &theme_core::ThemeBundle)>> {
+        let Some(active) = self.active_theme()? else {
+            return Ok(None);
+        };
+        let bundle = self
+            .config
+            .theme_bundles
+            .get(&active)
+            .with_context(|| format!("active/default theme '{active}' is not declared"))?;
+        Ok(Some((active, bundle)))
+    }
+
+    fn palette_names(&self, bundle: &theme_core::ThemeBundle) -> BTreeSet<String> {
+        let mut names = BTreeSet::from([bundle.palette.clone()]);
+        for wire in self
+            .config
+            .application_wires
+            .values()
+            .filter(|wire| wire.enabled())
+        {
+            if let Some(palette) = wire.palette_override() {
+                names.insert(palette.into());
+            }
+        }
+        names
+    }
+
+    fn load_profile(&self, name: &str) -> Result<Profile> {
+        validate_simple_name("structure", name)?;
+        let path = self.config.profiles_dir()?.join(format!("{name}.toml"));
+        let raw = fs::read_to_string(&path)
+            .with_context(|| format!("failed to read structure profile {}", path.display()))?;
+        let profile: Profile = toml::from_str(&raw)
+            .with_context(|| format!("failed to parse structure profile {}", path.display()))?;
+        if profile.name != name {
+            bail!(
+                "structure file '{name}.toml' declares name = '{}'",
+                profile.name
+            );
+        }
+        Ok(profile)
+    }
+
+    fn validate_wire_palette(&self, name: &str, wire: &ApplicationWire) -> Result<()> {
+        let ApplicationWire::NoctaliaTemplate {
+            palette, execution, ..
+        } = wire
+        else {
+            return Ok(());
+        };
+        let palette_config = &self.config.color_palettes[palette];
+        let provider = &self.config.color_providers[&palette_config.provider];
+        if !matches!(provider, ColorProviderConfig::Noctalia) {
+            bail!(
+                "Noctalia template wire '{name}' requires a Noctalia-backed palette; '{palette}' uses '{}'",
+                palette_config.provider
+            );
+        }
+        match execution {
+            NoctaliaExecution::Shell if palette_config.source != PaletteSource::ShellJson => {
+                bail!("shell-driven Noctalia wire '{name}' requires a shell-json palette authority")
+            }
+            NoctaliaExecution::Headless
+                if !matches!(
+                    palette_config.source,
+                    PaletteSource::Image | PaletteSource::ThemeJson
+                ) =>
+            {
+                bail!("headless Noctalia wire '{name}' requires an image or theme-json palette")
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn remove_stale_outputs(
+        &self,
+        desired_paths: &BTreeSet<PathBuf>,
+        reports: &mut BTreeMap<String, WireApplyReport>,
+    ) -> Result<()> {
+        let generated = self.config.generated_dir()?;
+        if !generated.is_dir() {
+            return Ok(());
+        }
+        let mut removed = Vec::new();
+        remove_stale_entries(&generated, desired_paths, &mut removed)?;
+        if !removed.is_empty() {
+            reports.insert(
+                "cleanup".into(),
+                WireApplyReport {
+                    wire: "cleanup".into(),
+                    changed: removed,
+                    unchanged: Vec::new(),
+                    delegated: false,
+                },
+            );
+        }
+        Ok(())
+    }
 }
 
-fn add_child_directories(paths: &mut Vec<PathBuf>, root: &Path) -> Result<()> {
-    if !root.is_dir() {
-        return Ok(());
-    }
-    for entry in fs::read_dir(root)
-        .with_context(|| format!("failed to inspect extension directory {}", root.display()))?
+fn remove_stale_entries(
+    directory: &Path,
+    desired_paths: &BTreeSet<PathBuf>,
+    removed: &mut Vec<PathBuf>,
+) -> Result<()> {
+    for entry in fs::read_dir(directory)
+        .with_context(|| format!("failed to list generated directory {}", directory.display()))?
     {
         let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() && !file_type.is_symlink() {
-            let path = entry.path();
-            add_watch_locations(paths, &path);
-            add_child_directories(paths, &path)?;
+        let path = entry.path();
+        let kind = entry.file_type()?;
+        if kind.is_dir() && !kind.is_symlink() {
+            remove_stale_entries(&path, desired_paths, removed)?;
+            if fs::read_dir(&path)?.next().is_none() {
+                fs::remove_dir(&path).with_context(|| {
+                    format!("failed to remove empty directory {}", path.display())
+                })?;
+            }
+        } else if !desired_paths.contains(&path) {
+            fs::remove_file(&path)
+                .with_context(|| format!("failed to remove stale output {}", path.display()))?;
+            removed.push(path);
         }
     }
     Ok(())
 }
 
-fn target_adapter(instance: &str, settings: &toml::Value) -> Result<(String, toml::Value)> {
-    let mut table = settings
-        .as_table()
-        .cloned()
-        .ok_or_else(|| anyhow::anyhow!("target '{instance}' configuration must be a table"))?;
-    let adapter = match table.remove("adapter") {
-        Some(toml::Value::String(adapter)) if !adapter.is_empty() => adapter,
-        Some(_) => bail!("target '{instance}' adapter must be a non-empty string"),
-        None => instance.to_string(),
-    };
-    Ok((adapter, toml::Value::Table(table)))
+fn validate_simple_name(kind: &str, name: &str) -> Result<()> {
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.contains(['/', '\\'])
+        || name.chars().any(char::is_control)
+    {
+        bail!("invalid {kind} name '{name}'");
+    }
+    Ok(())
 }
 
-fn add_watch_locations(paths: &mut Vec<PathBuf>, path: &Path) {
-    let logical = if path.is_dir() {
-        path.to_path_buf()
-    } else {
-        parent_or_current(path)
-    };
-    paths.push(logical.clone());
-
-    if let Ok(canonical) = fs::canonicalize(&logical) {
-        paths.push(canonical);
+fn safe_output_path(root: &Path, relative: &str) -> Result<PathBuf> {
+    validate_relative_output("generated output", relative)?;
+    let root_key = canonical_output_path(root)?;
+    let output = root.join(relative);
+    let output_key = canonical_output_path(&output)?;
+    if !output_key.starts_with(&root_key) {
+        bail!(
+            "generated output {} escapes generated directory {}",
+            output.display(),
+            root.display()
+        );
     }
-    if let Ok(canonical) = fs::canonicalize(path) {
-        paths.push(if canonical.is_dir() {
-            canonical
-        } else {
-            parent_or_current(&canonical)
-        });
-    }
+    Ok(output)
 }
 
-fn validate_owned_outputs(
-    paths: &[PathBuf],
-    target: &str,
-    current_state: &mut state::State,
-) -> Result<Vec<(PathBuf, String)>> {
-    let mut owned = Vec::new();
+fn register_output(owners: &mut BTreeMap<PathBuf, String>, wire: &str, path: &Path) -> Result<()> {
+    let key = canonical_output_path(path)?;
+    if let Some(previous) = owners.insert(key, wire.into()) {
+        bail!(
+            "application wires '{previous}' and '{wire}' both write {}",
+            path.display()
+        );
+    }
+    Ok(())
+}
 
-    for path in paths {
-        match fs::metadata(path) {
-            Ok(metadata) if !metadata.is_file() => {
-                bail!(
-                    "refusing to remove {} because it is not a regular file",
-                    path.display()
-                )
-            }
-            Ok(_) => {}
-            Err(err) if err.kind() == ErrorKind::NotFound => {
-                if let Ok(key) = canonical_output_path(path) {
-                    let key = key.to_string_lossy().into_owned();
-                    if current_state
-                        .generated_outputs
-                        .get(&key)
-                        .is_some_and(|output| output.target == target)
-                    {
-                        current_state.generated_outputs.remove(&key);
-                    }
-                }
-                continue;
-            }
-            Err(err) => {
-                return Err(err)
-                    .with_context(|| format!("failed to inspect output {}", path.display()));
-            }
+fn render_headless_template(
+    wire: &str,
+    palette_name: &str,
+    palette: &ColorPaletteConfig,
+    template_contents: &str,
+    output: &str,
+) -> Result<String> {
+    let staging = create_staging_dir()?;
+    let template = staging.join("template");
+    fs::write(&template, template_contents)
+        .with_context(|| format!("failed to stage headless Noctalia wire '{wire}' template"))?;
+    let staged_output = staging.join(output);
+    if let Some(parent) = staged_output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut args = providers::noctalia_source_args(palette_name, palette)?;
+    args.extend([
+        "--render".into(),
+        format!("{}:{}", template.display(), staged_output.display()),
+        "--default-mode".into(),
+        palette.mode.key().into(),
+    ]);
+    let result = Command::new(providers::noctalia_command())
+        .args(args)
+        .output()
+        .with_context(|| format!("headless Noctalia wire '{wire}' could not start the CLI"));
+    let result = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(error);
         }
-        match fs::read(path) {
-            Ok(contents) => {
-                let ownership_key = canonical_output_path(path)?.to_string_lossy().into_owned();
-                let prefix = String::from_utf8_lossy(&contents[..contents.len().min(512)]);
-                let header = prefix.lines().next();
-                let marker_owned = header == Some(GENERATED_MARKER)
-                    || header.and_then(|line| line.strip_prefix("# ")) == Some(GENERATED_MARKER)
-                    || header.and_then(|line| line.strip_prefix("// ")) == Some(GENERATED_MARKER);
-                let is_owned = match current_state.generated_outputs.get(&ownership_key) {
-                    Some(output) => {
-                        output.target == target && output.hash == state::content_hash(&contents)
-                    }
-                    None => marker_owned,
-                };
-                if !is_owned {
-                    bail!(
-                        "refusing to remove {} because it has changed or is not owned by theme-manager",
-                        path.display()
-                    );
+    };
+    if !result.status.success() {
+        let _ = fs::remove_dir_all(&staging);
+        bail!(
+            "headless Noctalia wire '{wire}' failed: {}",
+            String::from_utf8_lossy(&result.stderr).trim()
+        );
+    }
+    let contents = fs::read_to_string(&staged_output).with_context(|| {
+        format!(
+            "headless Noctalia wire '{wire}' did not render {}",
+            staged_output.display()
+        )
+    });
+    let _ = fs::remove_dir_all(staging);
+    contents
+}
+
+fn create_staging_dir() -> Result<PathBuf> {
+    for _ in 0..100 {
+        let sequence = NEXT_STAGING.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "theme-manager-stage-{}-{sequence}",
+            std::process::id()
+        ));
+        match fs::create_dir(&path) {
+            Ok(()) => {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    fs::set_permissions(&path, fs::Permissions::from_mode(0o700))?;
                 }
-                owned.push((
-                    path.to_path_buf(),
-                    ownership_key,
-                    state::content_hash(&contents),
-                ));
+                return Ok(path);
             }
-            Err(err) if err.kind() == ErrorKind::NotFound => continue,
-            Err(err) => {
-                return Err(err)
-                    .with_context(|| format!("failed to inspect output {}", path.display()));
-            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error).context("failed to create staging directory"),
         }
     }
+    bail!("failed to create a unique staging directory")
+}
 
-    let mut removals = Vec::new();
-    for (path, ownership_key, expected_hash) in owned {
-        current_state.generated_outputs.remove(&ownership_key);
-        removals.push((path, expected_hash));
+fn apply_shell_templates(wires: &[String]) -> Result<()> {
+    let output = Command::new(providers::noctalia_command())
+        .args(["msg", "templates-apply"])
+        .output()
+        .context("failed to request shell-driven Noctalia templates")?;
+    if !output.status.success() {
+        bail!(
+            "delegated Noctalia templates ({}) failed: {}",
+            wires.join(", "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
     }
-
-    Ok(removals)
+    Ok(())
 }
 
 pub fn parent_or_current(path: &Path) -> PathBuf {
@@ -427,126 +653,32 @@ pub fn parent_or_current(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{Runtime, add_watch_locations, validate_owned_outputs};
-    use std::{
-        fs,
-        path::Path,
-        sync::atomic::{AtomicUsize, Ordering},
-    };
-    use theme_core::{GENERATED_MARKER, state::State};
-
-    static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
+    use super::{register_output, safe_output_path};
+    use std::{collections::BTreeMap, fs, path::PathBuf};
 
     #[test]
-    fn output_removal_checks_every_file_before_deleting_any() {
-        let id = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
-        let root = std::env::temp_dir().join(format!(
-            "theme-manager-runtime-test-{}-{id}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&root).unwrap();
-        let owned = root.join("owned.conf");
-        let unmanaged = root.join("unmanaged.conf");
-        fs::write(&owned, format!("# {GENERATED_MARKER}\n")).unwrap();
-        fs::write(&unmanaged, "# user configuration\n").unwrap();
-
-        assert!(
-            validate_owned_outputs(&[owned.clone(), unmanaged], "foot", &mut State::default())
-                .is_err()
-        );
-        assert!(owned.exists());
-
-        fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn stale_runtime_cannot_recreate_a_disabled_target() {
-        let id = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
-        let root = std::env::temp_dir().join(format!(
-            "theme-manager-runtime-test-{}-{id}",
-            std::process::id()
-        ));
-        let profiles = root.join("profiles");
-        fs::create_dir_all(&profiles).unwrap();
-        fs::write(
-            profiles.join("glass.toml"),
-            include_str!("../../../profiles/glass.toml"),
-        )
-        .unwrap();
-        let output = root.join("foot.ini");
-        let state = root.join("state.toml");
-        let config = root.join("config.toml");
-        let plugins = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../plugins");
-        fs::write(
-            &config,
-            format!(
-                r##"profiles_dir = "{}"
-state_file = "{}"
-
-[extensions]
-dirs = ["{}"]
-
-[provider]
-kind = "luau:static"
-
-[provider.settings.colors]
-primary = "#80d998"
-outline = "#7c9598"
-error = "#ffb4ab"
-shadow = "#000000"
-secondary = "#9ccaff"
-surface = "#0f1512"
-on_surface = "#dfe4de"
-
-[targets.foot]
-adapter = "luau:foot"
-[targets.foot.outputs]
-config = "{}"
-[targets.foot.settings]
-role = "terminal"
-"##,
-                profiles.display(),
-                state.display(),
-                plugins.display(),
-                output.display(),
-            ),
-        )
-        .unwrap();
-
-        let stale = Runtime::load(Some(&config)).unwrap();
-        stale.engine.apply("glass", false).unwrap();
-        let controller = Runtime::load(Some(&config)).unwrap();
-        controller.set_target_enabled("foot", false).unwrap();
-        stale.engine.reapply("glass").unwrap();
-        assert!(!output.exists());
-
-        fs::remove_dir_all(root).unwrap();
+    fn two_wires_cannot_own_one_output() {
+        let mut owners = BTreeMap::new();
+        let output = PathBuf::from("generated/application.conf");
+        register_output(&mut owners, "first", &output).unwrap();
+        let error = register_output(&mut owners, "second", &output).unwrap_err();
+        assert!(error.to_string().contains("both write"));
     }
 
     #[cfg(unix)]
     #[test]
-    fn watch_locations_follow_file_symlinks() {
+    fn generated_outputs_cannot_escape_through_symlinks() {
         use std::os::unix::fs::symlink;
-
-        let id = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
         let root = std::env::temp_dir().join(format!(
-            "theme-manager-runtime-test-{}-{id}",
+            "theme-manager-containment-test-{}",
             std::process::id()
         ));
-        let source_dir = root.join("source");
-        let link_dir = root.join("links");
-        fs::create_dir_all(&source_dir).unwrap();
-        fs::create_dir_all(&link_dir).unwrap();
-        let source = source_dir.join("profile.toml");
-        let link = link_dir.join("profile.toml");
-        fs::write(&source, "name = \"test\"\n").unwrap();
-        symlink(&source, &link).unwrap();
-
-        let mut paths = Vec::new();
-        add_watch_locations(&mut paths, &link);
-        assert!(paths.contains(&fs::canonicalize(&source_dir).unwrap()));
-        assert!(paths.contains(&fs::canonicalize(&link_dir).unwrap()));
-
+        let generated = root.join("generated");
+        let outside = root.join("outside");
+        fs::create_dir_all(&generated).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        symlink(&outside, generated.join("escape")).unwrap();
+        assert!(safe_output_path(&generated, "escape/theme.css").is_err());
         fs::remove_dir_all(root).unwrap();
     }
 }

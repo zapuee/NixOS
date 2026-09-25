@@ -40,6 +40,10 @@ in
       }
     ];
 
+    home.sessionVariables = lib.mkIf cfg.useNoctalia {
+      STARSHIP_CONFIG = lib.mkForce "${config.xdg.cacheHome}/noctalia/starship.toml";
+    };
+
     programs.starship = {
       enable = true;
       enableZshIntegration = true;

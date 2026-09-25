@@ -1,90 +1,57 @@
-# Architecture notes
+# Architecture
 
-## Stable contracts
+The reusable `theme-core` crate contains only portable Theme Bundle and
+Application Contract types, profiles, semantic palette validation, resolution,
+generic appearance inventory types, capability planning, XDG paths, atomic file
+helpers, and minimal state. It contains no named compositor, shell, terminal,
+color generator, provider, wire, or adapter type.
 
-### Profile contract
+The `theme-manager` binary contains four fixed implementation edges:
 
-A profile expresses semantic appearance. It must not name concrete applications.
-
-### Provider contract
-
-```rust
-pub trait PaletteProvider: Send + Sync {
-    fn id(&self) -> &str;
-    fn load(&self) -> Result<Palette>;
-    fn watch_paths(&self) -> Vec<PathBuf>;
-}
-```
-
-Providers own dynamic inputs only. They do not generate application files.
-
-### Target contract
-
-```rust
-pub trait Target: Send + Sync {
-    fn id(&self) -> &str;
-    fn output_paths(&self) -> Result<Vec<PathBuf>>;
-    fn render(&self, theme: &ResolvedTheme) -> Result<Vec<Artifact>>;
-}
-```
-
-Targets are pure renderers in API v1. The core performs compare-before-write and
-atomic replacement, keeping application adapters small and consistent.
-Declaring output paths lets runtime component controls remove only generated
-files owned by a disabled target. Output ownership uses canonical paths and
-content hashes recorded in state, so format-neutral outputs are removed only
-when they still match what Rust last wrote. Collision checks resolve lexical and
-symlink aliases, preventing two adapters from targeting the same location.
-
-An apply first renders and preflights every output. Changed files are staged
-beside their destinations and committed with an on-disk journal tied to the
-state transaction ID. A normal apply only replaces a file whose ownership hash
-still matches (or a legacy generated file carrying the exact marker); explicit
-CLI force is required for any other regular file. Interrupted transactions are
-rolled back before the next runtime load, or finalized when their state commit
-already succeeded.
-
-### Runtime component state
-
-`config.toml` is the declarative boundary: a target with `enabled = false`
-cannot be enabled by runtime controls. For configured targets, the state file
-stores a set of runtime-disabled target IDs. State updates and target applies
-share a file lock, and state writes use atomic replacement. This keeps the CLI,
-TUI, and watcher from losing fields or recreating a target during a concurrent
-disable.
-
-## Runtime extension boundary
-
-Native Rust ABI is not stable. Runtime-loaded `.so` adapters would couple every
-plugin to the exact compiler/build ABI and make upgrades fragile.
-
-Theme-Manager therefore embeds a sandboxed Luau host through a versioned,
-plain-table API. Luau code only converts provider inputs into palette roles or a
-resolved theme into named text artifacts. Rust owns path expansion, input
-reads, output writes, collision detection, content ownership, state locking,
-watching, validation, and resource limits. No provider or target is registered
-in compiled Rust; the registry starts empty and is populated only by discovered
-plugin manifests. The official Static, Noctalia, Niri, and Foot integrations
-use exactly the same boundary as third-party plugins.
-
-Every configured target has an instance ID separate from its adapter ID. For
-example, `desktop-primary` may use `luau:generic-text`; runtime toggles and state
-refer to `desktop-primary`. Instance IDs remain stable even when their adapter
-implementation changes.
-
-Plugins cannot choose filesystem paths or perform writes. Configuration maps
-their logical output names to paths, and provider inputs are read by Rust before
-the plugin runs. A fresh, memory-limited VM is created for each call and an
-execution deadline interrupts runaway code. This keeps Rust responsible for the
-heavy work and makes integrations terminal- and application-agnostic.
-
-## Why the Noctalia palette bridge is a file
-
-Noctalia v5.1 can automatically rerender user templates when its palette changes.
-A rendered JSON file therefore gives us a narrow, stable integration boundary:
+- `config.rs`: provider- and adapter-specific typed runtime configuration;
+- `providers.rs`: Static, JSON-file, and Noctalia color loading;
+- `adapters.rs`: Niri and Foot rendering plus audited shell-template claims;
+- `runtime.rs`: bundle resolution, one-load-per-palette caching, capability
+  validation, staged rendering, contained output installation, and delegated
+  Noctalia coordination.
 
 ```text
-Noctalia palette -> palette.template.json -> cache JSON -> provider -> engine
+Theme Bundle
+  |-- Color Palette -> Color Provider -> normalized Palette
+  |-- Structure Profile ----------------------|
+  |                                           v
+  |                                  Resolved Appearance
+  |                                           |
+  +-> enabled Application Wires -> Capability Plan -> built-in adapters
+  |
+  +-> qualified Appearance Library items -> Nix inventory
 ```
 
-The core does not call Noctalia APIs and can run without Noctalia installed.
+The Capability Plan is validation data, not a composite renderer. A capability
+has exactly one owner. Multiple contributors can describe one application only
+through distinct audited setting boundaries. Runtime claims are compiled into
+adapters; rebuild claims come from the read-only Nix inventory. TOML cannot add
+arbitrary claims.
+
+The host's qualified cursor selection is Nix-visible. The same TOML bundle
+reference selects a repository-declared item from `stylix-cursors`; Nix resolves
+its package/name/size through upstream Stylix and emits the effective inventory.
+Theme Manager reads that inventory but never evaluates packages or invokes a
+rebuild.
+
+Theme Manager owns only `generated_dir`. Normal adapters have fixed filenames.
+A headless Noctalia wire stages output and accepts only a contained relative
+destination. Its template is selected from a closed, embedded repository
+catalog rather than a path. The Home Manager Noctalia module derives its shell
+template selection from the same configured wires. Shell-driven Noctalia and
+Nix activation remain separate execution domains; neither is presented as part
+of a global atomic transaction.
+
+After all outputs render and validate, changed files are atomically replaced
+and any file no longer in the desired set is removed from the exclusively owned
+generated directory. Provider or render failure therefore preserves the entire
+last-valid set.
+
+The CLI is the sole frontend. The watcher calls the same runtime operations.
+No registry, discovery mechanism, scripting VM, target factory, component
+toggle database, or TUI-specific data model remains.

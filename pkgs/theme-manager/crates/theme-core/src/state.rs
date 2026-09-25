@@ -2,35 +2,15 @@ use crate::fs::write_if_changed;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet},
     fs::{self, OpenOptions},
     path::Path,
 };
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct State {
     #[serde(default)]
-    pub active_profile: Option<String>,
-
-    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-    pub disabled_targets: BTreeSet<String>,
-
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub generated_outputs: BTreeMap<String, GeneratedOutput>,
-
-    /// Commit marker used to recover an interrupted multi-output transaction.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub last_transaction: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GeneratedOutput {
-    pub target: String,
-    pub hash: String,
-}
-
-pub fn content_hash(contents: impl AsRef<[u8]>) -> String {
-    blake3::hash(contents.as_ref()).to_hex().to_string()
+    pub active_theme: Option<String>,
 }
 
 pub fn read(path: &Path) -> Result<State> {
@@ -39,20 +19,45 @@ pub fn read(path: &Path) -> Result<State> {
     }
     let raw = fs::read_to_string(path)
         .with_context(|| format!("failed to read state {}", path.display()))?;
-    toml::from_str(&raw).with_context(|| format!("failed to parse state {}", path.display()))
+    match toml::from_str(&raw) {
+        Ok(state) => Ok(state),
+        Err(current_error) => migrate_v0_2(&raw)
+            .with_context(|| format!("failed to parse state {}: {current_error}", path.display())),
+    }
+}
+
+fn migrate_v0_2(raw: &str) -> Result<State> {
+    let value: toml::Value = toml::from_str(raw)?;
+    let table = value
+        .as_table()
+        .context("legacy state must be a TOML table")?;
+    const LEGACY_KEYS: &[&str] = &[
+        "active_profile",
+        "disabled_targets",
+        "generated_outputs",
+        "last_transaction",
+    ];
+    if let Some(unknown) = table
+        .keys()
+        .find(|key| !LEGACY_KEYS.contains(&key.as_str()))
+    {
+        anyhow::bail!("unknown state field '{unknown}'");
+    }
+    let active_theme = table
+        .get("active_profile")
+        .map(|value| {
+            value
+                .as_str()
+                .map(str::to_string)
+                .context("legacy active_profile must be a string")
+        })
+        .transpose()?;
+    Ok(State { active_theme })
 }
 
 pub fn write(path: &Path, state: &State) -> Result<bool> {
     let raw = toml::to_string_pretty(state).context("failed to serialize state")?;
     write_if_changed(path, &raw)
-}
-
-pub fn update(path: &Path, mutate: impl FnOnce(&mut State)) -> Result<bool> {
-    with_lock(path, || {
-        let mut state = read(path)?;
-        mutate(&mut state);
-        write(path, &state)
-    })
 }
 
 pub fn with_lock<T>(path: &Path, operation: impl FnOnce() -> Result<T>) -> Result<T> {
@@ -62,7 +67,6 @@ pub fn with_lock<T>(path: &Path, operation: impl FnOnce() -> Result<T>) -> Resul
         .unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent)
         .with_context(|| format!("failed to create state directory {}", parent.display()))?;
-
     let file_name = path
         .file_name()
         .and_then(|value| value.to_str())
@@ -75,7 +79,6 @@ pub fn with_lock<T>(path: &Path, operation: impl FnOnce() -> Result<T>) -> Resul
         .write(true)
         .open(&lock_path)
         .with_context(|| format!("failed to open state lock {}", lock_path.display()))?;
-
     fs2::FileExt::lock_exclusive(&lock)
         .with_context(|| format!("failed to lock state {}", path.display()))?;
     operation()
@@ -83,40 +86,18 @@ pub fn with_lock<T>(path: &Path, operation: impl FnOnce() -> Result<T>) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use super::{read, update};
-    use std::{
-        fs,
-        sync::{Arc, Barrier},
-        thread,
-    };
+    use super::migrate_v0_2;
 
     #[test]
-    fn concurrent_updates_preserve_every_field_change() {
-        let root =
-            std::env::temp_dir().join(format!("theme-manager-state-test-{}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
-        let path = Arc::new(root.join("state.toml"));
-        let barrier = Arc::new(Barrier::new(8));
-        let threads = (0..8)
-            .map(|index| {
-                let path = Arc::clone(&path);
-                let barrier = Arc::clone(&barrier);
-                thread::spawn(move || {
-                    barrier.wait();
-                    update(&path, |state| {
-                        state.disabled_targets.insert(format!("target-{index}"));
-                    })
-                    .unwrap();
-                })
-            })
-            .collect::<Vec<_>>();
-
-        for worker in threads {
-            worker.join().unwrap();
-        }
-
-        let state = read(&path).unwrap();
-        assert_eq!(state.disabled_targets.len(), 8);
-        let _ = fs::remove_dir_all(root);
+    fn migrates_only_known_v0_2_state_fields() {
+        let state = migrate_v0_2(
+            r#"active_profile = "glass"
+disabled_targets = ["foot"]
+[generated_outputs]
+"#,
+        )
+        .unwrap();
+        assert_eq!(state.active_theme.as_deref(), Some("glass"));
+        assert!(migrate_v0_2("active_profiel = \"glass\"").is_err());
     }
 }

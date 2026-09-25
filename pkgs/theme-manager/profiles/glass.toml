@@ -5,17 +5,12 @@ description = "Translucent glass-like structure"
 # Profiles describe appearance only. They do not name Niri, Firefox, Foot,
 # Noctalia, or any other implementation.
 
-[variables]
-material = "glass"
-
 [variables.opacity]
 primary = 0.25
 secondary = 0.85
-tertiary = 0.10
 
 [variables.radius]
 primary = 1
-secondary = 10
 
 [layout]
 gaps = 8
@@ -36,19 +31,13 @@ color = "shadow"
 
 [roles.compositor]
 corner_radius = "primary"
-material = "preferred"
 
 [roles.browser]
 background_opacity = "secondary"
 blur = true
 corner_radius = "primary"
-material = "preferred"
-accent_color = "primary"
 
 [roles.terminal]
 background_opacity = "primary"
 blur = true
 corner_radius = "primary"
-material = "preferred"
-cursor_color = "primary"
-selection_color = "secondary"

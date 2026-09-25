@@ -2,17 +2,12 @@ schema = 1
 name = "paper"
 description = "Opaque, flat paper-like structure"
 
-[variables]
-material = "solid"
-
 [variables.opacity]
 primary = 1.00
 secondary = 1.00
-tertiary = 1.00
 
 [variables.radius]
 primary = 0
-secondary = 0
 
 [layout]
 gaps = 6
@@ -33,19 +28,13 @@ color = "shadow"
 
 [roles.compositor]
 corner_radius = "primary"
-material = "preferred"
 
 [roles.browser]
 background_opacity = "primary"
 blur = false
 corner_radius = "primary"
-material = "preferred"
-accent_color = "primary"
 
 [roles.terminal]
 background_opacity = "primary"
 blur = false
 corner_radius = "primary"
-material = "preferred"
-cursor_color = "primary"
-selection_color = "secondary"

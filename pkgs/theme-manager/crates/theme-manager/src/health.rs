@@ -13,7 +13,7 @@ pub struct WatchHealth {
     pub started_ms: u64,
     pub last_attempt_ms: u64,
     pub last_success_ms: Option<u64>,
-    pub active_profile: Option<String>,
+    pub active_theme: Option<String>,
     pub last_error: Option<String>,
 }
 
@@ -26,7 +26,7 @@ impl WatchHealth {
             started_ms: now,
             last_attempt_ms: now,
             last_success_ms: None,
-            active_profile: None,
+            active_theme: None,
             last_error: None,
         }
     }
@@ -63,8 +63,4 @@ pub fn read(path: &Path) -> Result<Option<WatchHealth>> {
     let health = serde_json::from_str(&raw)
         .with_context(|| format!("failed to parse watcher health {}", path.display()))?;
     Ok(Some(health))
-}
-
-pub fn process_is_alive(pid: u32) -> bool {
-    Path::new("/proc").join(pid.to_string()).exists()
 }

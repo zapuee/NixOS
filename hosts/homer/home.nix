@@ -33,7 +33,6 @@
 
       starship = {
         enable = true;
-        style = "grayscale";
         useNoctalia = true;
       };
 
