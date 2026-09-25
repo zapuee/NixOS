@@ -26,7 +26,7 @@ in
           repeat-delay = 300;
           repeat-rate = 60;
         };
-        spawn-at-startup = lib.optional (config.userSettings.desktopShell == "noctalia") [ "noctalia" ];
+        spawn-at-startup = lib.optionals (config.userSettings.desktopShell == "noctalia") [ "noctalia" ];
         _children = [
           {
             window-rule = {

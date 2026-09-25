@@ -5,8 +5,8 @@ A provider/target-based desktop appearance engine with CLI and TUI frontends.
 ## Build and run
 
 The Nix package is self-contained. It includes the integration-free Rust engine,
-official Static, Noctalia, Niri, and Foot Luau plugins, the `glass` and `paper`
-profiles, and the optional Noctalia bridge assets.
+official Static, Noctalia, Niri, and Foot Luau plugins, and the `glass` and
+`paper` profiles.
 No files need to be copied into `~/.config` before first use:
 
 ```bash
@@ -60,9 +60,9 @@ programs.theme-manager = {
 };
 ```
 
-This is the first extraction of the old Noctalia-specific Theme Manager into an
-independent Rust application. Noctalia is now optional and only provides
-dynamic colors; it does not own the engine or its user interface.
+Noctalia is optional and only provides dynamic colors through the same plugin
+boundary as every other provider. It does not own the engine or its user
+interface.
 
 ## Design
 
@@ -116,19 +116,16 @@ crates/
 
 plugins/
   static/                     fixed semantic palette provider
-  noctalia/                   rendered JSON palette provider
+  noctalia/                   rendered JSON provider and bridge template
   niri/                       Niri KDL target
   foot/                       Foot background-alpha target
 
-integrations/
-  noctalia/
-    palette.template.json     dynamic color bridge
+profiles/
+  glass.toml
+  paper.toml
 
 examples/
   config.toml
-  profiles/
-    glass.toml
-    paper.toml
 ```
 
 The Rust crates contain **no registered application integrations**. A bare
@@ -187,6 +184,19 @@ role = "terminal"
 A future integration can consume any semantic role without changing
 `glass.toml` or `paper.toml`; the engine has no terminal-specific category.
 
+With this repository's Home Manager modules, structure files are discovered
+from `profiles/*.toml`. To add one, copy a TOML file into that directory. There
+is no Nix registry to update. Runtime wiring lives in the ordinary
+`modules/user/theme-manager/config.toml` file, so changing providers or targets
+also requires no Nix code.
+
+For an untracked or temporary structure, drop the TOML file directly into
+`$XDG_CONFIG_HOME/theme-manager/profiles`; the CLI, TUI, and watcher discover it
+without a rebuild.
+
+The explicit CLI namespace is `theme-manager structure list|apply|resolve|check`.
+The original top-level commands remain compatibility aliases.
+
 ## Dynamic providers
 
 The profile refers to semantic colors such as:
@@ -222,23 +232,27 @@ kind = "luau:noctalia"
 palette = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
 ```
 
-See `integrations/noctalia/README.md`. Noctalia renders a tiny JSON template
+See `plugins/noctalia/README.md`. Noctalia renders a tiny JSON template
 when its palette changes. The Rust watcher sees that file change and reapplies
 the current structure profile.
+
+To use a different palette source, install its provider plugin and change only
+`[provider].kind`, inputs, and settings in `config.toml`. A future Stylix bridge
+does not require changes to the manager, its CLI, or the Nix module.
 
 ## CLI
 
 ```bash
-theme-manager list
+theme-manager structure list
 theme-manager status
 theme-manager doctor
 theme-manager doctor --json
-theme-manager apply glass
-theme-manager apply glass --force
-theme-manager apply paper
-theme-manager resolve glass
-theme-manager resolve glass --json
-theme-manager check
+theme-manager structure apply glass
+theme-manager structure apply glass --force
+theme-manager structure apply paper
+theme-manager structure resolve glass
+theme-manager structure resolve glass --json
+theme-manager structure check
 theme-manager components
 theme-manager components list
 theme-manager components disable foot
@@ -284,6 +298,12 @@ execution_ms = 250
 io_mib = 4
 ```
 
+For a tracked plugin, add its directory under `plugins/`; the Nix package copies
+the whole catalog automatically. For local iteration, put the same directory
+under `$XDG_CONFIG_HOME/theme-manager/plugins`; no Nix edit or rebuild is
+needed. `theme-manager plugins check` validates every discovered manifest and
+script.
+
 Target scripts receive the fully resolved theme and return named strings. Rust
 maps those names to configured paths and performs all writes:
 
@@ -310,9 +330,9 @@ contains a generic target example.
 The JSON forms are intended for frontends/scripts:
 
 ```bash
-theme-manager list --json
+theme-manager structure list --json
 theme-manager status --json
-theme-manager apply glass --json
+theme-manager structure apply glass --json
 theme-manager components list --json
 theme-manager components enable foot --json
 ```
@@ -322,7 +342,7 @@ theme-manager components enable foot --json
 Run `theme-manager tui` for an interactive interface that does not require
 memorizing CLI commands. It supports:
 
-- browsing and applying profiles
+- browsing and applying structures
 - dry-run previews
 - validating every profile and target
 - enabling/disabling configured targets
@@ -330,7 +350,7 @@ memorizing CLI commands. It supports:
 - responsive wide and narrow terminal layouts
 
 The controls are always shown at the bottom. Vim navigation is enabled by
-default: `h`/`l` select panes, `j`/`k` move, `g`/`G` jump to the
+default: `h`/`l` cycle panes, `j`/`k` move, `g`/`G` jump to the
 first/last item, and `Ctrl-u`/`Ctrl-d` jump half a list. Arrow keys, `Tab`,
 `Home`, and `End` work in either mode. `Enter` applies or toggles, `d`
 previews, `c` validates, `r` reloads, and `q` exits.

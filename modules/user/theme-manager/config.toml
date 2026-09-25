@@ -1,0 +1,40 @@
+profiles_dir = "$XDG_CONFIG_HOME/theme-manager/profiles"
+state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
+default_profile = "glass"
+
+[tui]
+vim_keys = true
+
+[provider]
+kind = "luau:noctalia"
+
+[provider.inputs]
+palette = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json"
+
+[targets.niri]
+adapter = "luau:niri"
+
+[targets.niri.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/niri.kdl"
+
+[targets.niri.settings]
+global_role = "compositor"
+
+[[targets.niri.settings.windows]]
+role = "browser"
+app_id = "^firefox$"
+use_opacity = true
+
+[[targets.niri.settings.windows]]
+role = "terminal"
+app_id = "^(foot|footclient)$"
+use_opacity = false
+
+[targets.foot]
+adapter = "luau:foot"
+
+[targets.foot.outputs]
+config = "$XDG_CONFIG_HOME/theme-manager/generated/foot.ini"
+
+[targets.foot.settings]
+role = "terminal"

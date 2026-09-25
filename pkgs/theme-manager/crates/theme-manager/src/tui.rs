@@ -15,7 +15,7 @@ use theme_core::ProfileSummary;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Pane {
-    Profiles,
+    Structures,
     Targets,
 }
 
@@ -56,7 +56,7 @@ impl App {
             requested_config,
             no_vim,
             snapshot,
-            pane: Pane::Profiles,
+            pane: Pane::Structures,
             profile_index,
             target_index: 0,
             message,
@@ -89,11 +89,11 @@ impl App {
             KeyCode::Char('q') if key.modifiers.is_empty() => return Ok(true),
             KeyCode::Tab | KeyCode::BackTab => {
                 self.pane = match self.pane {
-                    Pane::Profiles => Pane::Targets,
-                    Pane::Targets => Pane::Profiles,
+                    Pane::Structures => Pane::Targets,
+                    Pane::Targets => Pane::Structures,
                 };
             }
-            KeyCode::Left => self.pane = Pane::Profiles,
+            KeyCode::Left => self.pane = Pane::Structures,
             KeyCode::Right => self.pane = Pane::Targets,
             KeyCode::Up => self.move_selection(-1),
             KeyCode::Down => self.move_selection(1),
@@ -103,7 +103,7 @@ impl App {
             KeyCode::Char(' ') if key.modifiers.is_empty() && self.pane == Pane::Targets => {
                 self.toggle_target();
             }
-            KeyCode::Char('d') if key.modifiers.is_empty() && self.pane == Pane::Profiles => {
+            KeyCode::Char('d') if key.modifiers.is_empty() && self.pane == Pane::Structures => {
                 self.preview_profile();
             }
             KeyCode::Char('c') if key.modifiers.is_empty() => self.check_configuration(),
@@ -117,7 +117,7 @@ impl App {
 
     fn handle_vim_key(&mut self, key: KeyEvent) {
         match (key.code, key.modifiers) {
-            (KeyCode::Char('h'), KeyModifiers::NONE) => self.pane = Pane::Profiles,
+            (KeyCode::Char('h'), KeyModifiers::NONE) => self.pane = Pane::Structures,
             (KeyCode::Char('l'), KeyModifiers::NONE) => self.pane = Pane::Targets,
             (KeyCode::Char('k'), KeyModifiers::NONE) => self.move_selection(-1),
             (KeyCode::Char('j'), KeyModifiers::NONE) => self.move_selection(1),
@@ -141,14 +141,14 @@ impl App {
 
     fn selection(&self) -> usize {
         match self.pane {
-            Pane::Profiles => self.profile_index,
+            Pane::Structures => self.profile_index,
             Pane::Targets => self.target_index,
         }
     }
 
     fn item_count(&self) -> usize {
         match self.pane {
-            Pane::Profiles => self.snapshot.profiles.len(),
+            Pane::Structures => self.snapshot.profiles.len(),
             Pane::Targets => self.snapshot.targets.len(),
         }
     }
@@ -157,7 +157,7 @@ impl App {
         let last = self.item_count().saturating_sub(1);
         let selected = requested.min(last);
         match self.pane {
-            Pane::Profiles => self.profile_index = selected,
+            Pane::Structures => self.profile_index = selected,
             Pane::Targets => self.target_index = selected,
         }
     }
@@ -178,7 +178,7 @@ impl App {
 
     fn activate(&mut self) {
         match self.pane {
-            Pane::Profiles => self.apply_profile(),
+            Pane::Structures => self.apply_profile(),
             Pane::Targets => self.toggle_target(),
         }
     }
@@ -344,7 +344,7 @@ impl App {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::raw("  "),
-            Span::styled("Profile: ", Style::default().fg(Color::DarkGray)),
+            Span::styled("Structure: ", Style::default().fg(Color::DarkGray)),
             Span::raw(active),
             Span::raw("  "),
             Span::styled("Provider: ", Style::default().fg(Color::DarkGray)),
@@ -372,7 +372,7 @@ impl App {
             self.render_targets(frame, columns[1]);
         } else {
             match self.pane {
-                Pane::Profiles => self.render_profiles(frame, area),
+                Pane::Structures => self.render_profiles(frame, area),
                 Pane::Targets => self.render_targets(frame, area),
             }
         }
@@ -389,7 +389,7 @@ impl App {
             ListItem::new(format!(" {marker} {}", profile.name)).style(style)
         });
         let list = List::new(items)
-            .block(self.pane_block("Profiles", Pane::Profiles))
+            .block(self.pane_block("Structures", Pane::Structures))
             .highlight_style(
                 Style::default()
                     .fg(Color::Black)
@@ -557,7 +557,7 @@ mod tests {
                 config_path: PathBuf::from("/tmp/config.toml"),
                 vim_keys: true,
             },
-            pane: Pane::Profiles,
+            pane: Pane::Structures,
             profile_index: 0,
             target_index: 0,
             message: "Ready.".into(),
@@ -603,7 +603,7 @@ mod tests {
         assert_eq!(app.pane, Pane::Targets);
         app.handle_key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE))
             .unwrap();
-        assert_eq!(app.pane, Pane::Profiles);
+        assert_eq!(app.pane, Pane::Structures);
     }
 
     #[test]
@@ -625,7 +625,7 @@ mod tests {
         assert_eq!(app.pane, Pane::Targets);
         app.handle_key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE))
             .unwrap();
-        assert_eq!(app.pane, Pane::Profiles);
+        assert_eq!(app.pane, Pane::Structures);
         app.handle_key(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE))
             .unwrap();
         assert_eq!(app.pane, Pane::Targets);

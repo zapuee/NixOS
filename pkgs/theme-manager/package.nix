@@ -16,10 +16,9 @@ rustPlatform.buildRustPackage {
       ./Cargo.lock
       ./crates
       ./plugins
-      ./examples/profiles
+      ./profiles
       ./examples/plugins
       ./api
-      ./integrations/noctalia
       ./nix/default-config.toml
     ];
   };
@@ -36,9 +35,8 @@ rustPlatform.buildRustPackage {
   postInstall = ''
     dataDir="$out/share/theme-manager"
     install -Dm444 nix/default-config.toml "$dataDir/config.toml"
-    install -Dm444 examples/profiles/glass.toml "$dataDir/profiles/glass.toml"
-    install -Dm444 examples/profiles/paper.toml "$dataDir/profiles/paper.toml"
-    cp -R integrations/noctalia "$dataDir/noctalia"
+    install -d "$dataDir/profiles"
+    cp -R profiles/. "$dataDir/profiles/"
     cp -R api "$dataDir/luau"
     cp -R plugins "$dataDir/plugins"
     install -d "$dataDir/examples"
@@ -59,6 +57,8 @@ rustPlatform.buildRustPackage {
     export XDG_CACHE_HOME="$testHome/cache"
 
     "$out/bin/theme-manager" check
+    "$out/bin/theme-manager" structure check
+    test "$("$out/bin/theme-manager" list --json)" = "$("$out/bin/theme-manager" structure list --json)"
     "$out/bin/theme-manager" doctor --json | grep -q '"schema": 1'
     "$out/bin/theme-manager" plugins check
     "$out/bin/theme-manager" apply glass
@@ -74,6 +74,7 @@ rustPlatform.buildRustPackage {
     test -f "$out/share/theme-manager/luau/theme-manager.d.luau"
     test -f "$out/share/theme-manager/plugins/foot/main.luau"
     test -f "$out/share/theme-manager/plugins/noctalia/main.luau"
+    test -f "$out/share/theme-manager/plugins/noctalia/palette.template.json"
     test -f "$out/share/theme-manager/examples/plugins/generic-text/main.luau"
 
     runHook postInstallCheck

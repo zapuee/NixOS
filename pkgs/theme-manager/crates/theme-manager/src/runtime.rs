@@ -470,7 +470,7 @@ mod tests {
         fs::create_dir_all(&profiles).unwrap();
         fs::write(
             profiles.join("glass.toml"),
-            include_str!("../../../examples/profiles/glass.toml"),
+            include_str!("../../../profiles/glass.toml"),
         )
         .unwrap();
         let output = root.join("foot.ini");

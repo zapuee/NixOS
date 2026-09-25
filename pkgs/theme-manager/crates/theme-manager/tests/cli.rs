@@ -32,7 +32,7 @@ impl Fixture {
         fs::create_dir_all(&profiles).unwrap();
         fs::write(
             profiles.join("glass.toml"),
-            include_str!("../../../examples/profiles/glass.toml"),
+            include_str!("../../../profiles/glass.toml"),
         )
         .unwrap();
         Self { root }
@@ -85,6 +85,17 @@ on_surface = "#dfe4de"
             .output()
             .unwrap()
     }
+}
+
+#[test]
+fn namespaced_structure_commands_match_legacy_aliases() {
+    let fixture = Fixture::new();
+    let config = fixture.write_config("");
+    let legacy = fixture.run(&config, &["list", "--json"]);
+    let namespaced = fixture.run(&config, &["structure", "list", "--json"]);
+    assert!(legacy.status.success());
+    assert!(namespaced.status.success());
+    assert_eq!(legacy.stdout, namespaced.stdout);
 }
 
 #[test]

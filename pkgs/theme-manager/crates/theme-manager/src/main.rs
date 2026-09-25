@@ -80,6 +80,12 @@ enum Command {
     /// Validate one profile, or every profile when no name is supplied.
     Check { profile: Option<String> },
 
+    /// Manage desktop structure profiles.
+    Structure {
+        #[command(subcommand)]
+        action: StructureAction,
+    },
+
     /// Diagnose configuration, profiles, outputs, plugins, and watcher health.
     Doctor {
         #[arg(long)]
@@ -111,6 +117,33 @@ enum Command {
         #[arg(long)]
         no_vim: bool,
     },
+}
+
+#[derive(Subcommand)]
+enum StructureAction {
+    /// List available structure profiles.
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Apply a structure profile and make it active.
+    Apply {
+        profile: String,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        force: bool,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Show the fully resolved structure.
+    Resolve {
+        profile: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Validate one structure, or every structure when omitted.
+    Check { profile: Option<String> },
 }
 
 #[derive(Subcommand)]
@@ -276,15 +309,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::List { json } => {
-            let profiles = runtime.engine.list_profiles()?;
-            if json {
-                print_json(&profiles)?;
-            } else {
-                for profile in profiles {
-                    let marker = if profile.active { "*" } else { " " };
-                    outputln!("{marker} {}", profile.name);
-                }
-            }
+            list_structures(&runtime, json)?;
         }
 
         Command::Apply {
@@ -293,48 +318,11 @@ fn main() -> Result<()> {
             force,
             json,
         } => {
-            let report = runtime
-                .engine
-                .apply_with_options(&profile, dry_run, force)?;
-            if json {
-                print_json(&report)?;
-            } else {
-                outputln!(
-                    "{} profile '{}'",
-                    if dry_run { "Resolved" } else { "Applied" },
-                    profile
-                );
-                for target in &report.targets {
-                    outputln!(
-                        "  {}: {} changed, {} unchanged",
-                        target.target,
-                        target.changed.len(),
-                        target.unchanged.len()
-                    );
-                    for path in &target.changed {
-                        outputln!("    -> {}", path.display());
-                    }
-                    for path in &target.forced {
-                        outputln!("    !! forcibly replaced {}", path.display());
-                    }
-                }
-            }
+            apply_structure(&runtime, &profile, dry_run, force, json)?;
         }
 
         Command::Resolve { profile, json } => {
-            let profile = match profile {
-                Some(profile) => profile,
-                None => runtime
-                    .engine
-                    .active_profile()?
-                    .context("no active/default profile")?,
-            };
-            let resolved = runtime.engine.resolve_profile(&profile)?;
-            if json {
-                print_json(&resolved)?;
-            } else {
-                outputln!("{}", toml::to_string_pretty(&resolved)?);
-            }
+            resolve_structure(&runtime, profile, json)?;
         }
 
         Command::Status { json } => {
@@ -356,20 +344,22 @@ fn main() -> Result<()> {
         }
 
         Command::Check { profile } => {
-            if let Some(profile) = profile {
-                runtime.engine.validate_profile(&profile)?;
-                outputln!("ok: {profile}");
-            } else {
-                let profiles = runtime.engine.list_profiles()?;
-                for profile in profiles {
-                    runtime
-                        .engine
-                        .validate_profile(&profile.name)
-                        .with_context(|| format!("profile '{}' is invalid", profile.name))?;
-                    outputln!("ok: {}", profile.name);
-                }
-            }
+            check_structures(&runtime, profile)?;
         }
+
+        Command::Structure { action } => match action {
+            StructureAction::List { json } => list_structures(&runtime, json)?,
+            StructureAction::Apply {
+                profile,
+                dry_run,
+                force,
+                json,
+            } => apply_structure(&runtime, &profile, dry_run, force, json)?,
+            StructureAction::Resolve { profile, json } => {
+                resolve_structure(&runtime, profile, json)?
+            }
+            StructureAction::Check { profile } => check_structures(&runtime, profile)?,
+        },
 
         Command::Components {
             action: Some(action),
@@ -417,6 +407,87 @@ fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn list_structures(runtime: &Runtime, json: bool) -> Result<()> {
+    let profiles = runtime.engine.list_profiles()?;
+    if json {
+        return print_json(&profiles);
+    }
+    for profile in profiles {
+        outputln!(
+            "{} {}",
+            if profile.active { "*" } else { " " },
+            profile.name
+        );
+    }
+    Ok(())
+}
+
+fn apply_structure(
+    runtime: &Runtime,
+    profile: &str,
+    dry_run: bool,
+    force: bool,
+    json: bool,
+) -> Result<()> {
+    let report = runtime.engine.apply_with_options(profile, dry_run, force)?;
+    if json {
+        return print_json(&report);
+    }
+    outputln!(
+        "{} profile '{}'",
+        if dry_run { "Resolved" } else { "Applied" },
+        profile
+    );
+    for target in &report.targets {
+        outputln!(
+            "  {}: {} changed, {} unchanged",
+            target.target,
+            target.changed.len(),
+            target.unchanged.len()
+        );
+        for path in &target.changed {
+            outputln!("    -> {}", path.display());
+        }
+        for path in &target.forced {
+            outputln!("    !! forcibly replaced {}", path.display());
+        }
+    }
+    Ok(())
+}
+
+fn resolve_structure(runtime: &Runtime, profile: Option<String>, json: bool) -> Result<()> {
+    let profile = match profile {
+        Some(profile) => profile,
+        None => runtime
+            .engine
+            .active_profile()?
+            .context("no active/default profile")?,
+    };
+    let resolved = runtime.engine.resolve_profile(&profile)?;
+    if json {
+        print_json(&resolved)
+    } else {
+        outputln!("{}", toml::to_string_pretty(&resolved)?);
+        Ok(())
+    }
+}
+
+fn check_structures(runtime: &Runtime, profile: Option<String>) -> Result<()> {
+    if let Some(profile) = profile {
+        runtime.engine.validate_profile(&profile)?;
+        outputln!("ok: {profile}");
+        return Ok(());
+    }
+    for profile in runtime.engine.list_profiles()? {
+        runtime
+            .engine
+            .validate_profile(&profile.name)
+            .with_context(|| format!("profile '{}' is invalid", profile.name))?;
+        outputln!("ok: {}", profile.name);
+    }
     Ok(())
 }
 

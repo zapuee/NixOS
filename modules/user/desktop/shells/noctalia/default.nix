@@ -4,7 +4,6 @@
   lib,
   ...
 }:
-
 {
   imports = [
     inputs.noctalia.homeModules.default
@@ -16,11 +15,14 @@
 
       settings = {
         theme.templates.user."theme-manager-palette" = {
-          input_path = "$XDG_CONFIG_HOME/theme-manager/integrations/noctalia/palette.template.json";
+          input_path = "$XDG_CONFIG_HOME/theme-manager/plugins/noctalia/palette.template.json";
 
           output_path = "$XDG_CACHE_HOME/theme-manager/noctalia-palette.json";
         };
       };
     };
+
+    xdg.configFile."theme-manager/plugins/noctalia/palette.template.json".source =
+      ../../../../../pkgs/theme-manager/plugins/noctalia/palette.template.json;
   };
 }

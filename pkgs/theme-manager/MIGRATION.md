@@ -75,7 +75,7 @@ after the palette/theme include so structure alpha wins.
 
 ## 4. Noctalia dynamic colors
 
-Register `integrations/noctalia/palette.template.json` as a Noctalia user
+Register `plugins/noctalia/palette.template.json` as a Noctalia user
 template and output it to:
 
 ```text
