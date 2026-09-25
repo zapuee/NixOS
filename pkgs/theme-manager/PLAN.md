@@ -29,7 +29,7 @@ Noctalia are optional integrations with different responsibilities.
    ecosystem problem rather than the current configuration's needs.
 5. Support more than one named color palette. A palette selects a Color Provider
    and its provider-specific scheme or input. An Application Wire uses the
-   default palette unless it explicitly selects another one.
+   active Theme Bundle's palette unless it explicitly selects another one.
 6. Keep structural appearance independent from color generation. Opacity, blur,
    corner radius, gaps, focus rings, shadows, and similar values belong to a
    Structure Profile, not to Stylix or Noctalia.
@@ -45,6 +45,25 @@ Noctalia are optional integrations with different responsibilities.
    clean merge or include boundary.
 10. Keep the CLI as the complete primary interface. The TUI remains optional and
     must not determine the core architecture.
+11. Present one **Theme Bundle** as the user-facing selection without collapsing
+    unlike values into a palette. A bundle explicitly selects a Color Palette,
+    Structure Profile, and, where configured, named typography, cursor, icon,
+    and wallpaper items from named libraries.
+12. Make the source of every non-color item explicit. For example, a cursor is
+    selected as an item from `stylix-cursors`, not as an unqualified cursor name
+    that happens to be delivered by Stylix.
+13. Resolve enabled Stylix targets, built-in wires, and Noctalia Template Wires
+    into one validated **Capability Plan**. This is an ownership and coverage
+    planner, not a composite Color Provider or a renderer that rewrites one
+    system's output through another.
+14. Define completeness against small typed application contracts. Every
+    required capability has exactly one owner; optional capabilities are
+    reported but may be absent. Multiple contributors may complete one
+    application only across a real, tested merge or include boundary.
+15. Report the delivery cadence of every selection and capability as
+    `runtime`, `session`, or `rebuild`. A Theme Bundle is one desired appearance,
+    but applying it must not pretend that Nix-owned or session-scoped features
+    changed live.
 
 ## What is already true
 
@@ -106,6 +125,100 @@ Use `scheme` or `variant` for values such as `m3-content` and
 Rename that structural field to `surface_style` during migration so the two
 concepts cannot be confused.
 
+### Appearance Library
+
+A named, typed catalog of non-color appearance items supplied through one
+explicit integration. Initial useful library kinds are:
+
+- **Stylix Cursor Library**: repository-declared cursor items delivered through
+  `stylix.cursor`, each with a Nix package, cursor name, and size;
+- **Stylix Typography Library**: repository-declared font sets delivered through
+  `stylix.fonts`, including serif, sans-serif, monospace, emoji, and sizes;
+- **Stylix Icon Library**: repository-declared icon themes delivered through
+  `stylix.icons`;
+- **Stylix Wallpaper Library**: repository-declared images and scaling modes
+  delivered through `stylix.image` and `stylix.imageScalingMode`.
+
+The user always selects both a library and an item, for example
+`library = "stylix-cursors", item = "bibata-modern-ice"`. Do not expose an
+unqualified `cursor = "bibata-modern-ice"` and infer Stylix from ambient host
+configuration.
+
+An Appearance Library is not a runtime package repository, discovery service,
+or download catalog. Its items are declared in the local Nix configuration so
+package values remain typed Nix values and dependencies remain pinned. The Home
+Manager module may emit a read-only runtime inventory containing stable item
+IDs, display metadata, effective values, source, and delivery cadence; runtime
+TOML never evaluates package expressions.
+
+Keep separate libraries when the delivery integration differs. A future
+repository-owned runtime cursor library must not silently reuse the
+`stylix-cursors` name. Library names make provenance part of configuration and
+of `theme-manager check` output.
+
+Selecting an item does not by itself prove system-wide delivery. The host's Nix
+configuration declares the consumers for which coverage is required, such as
+GTK, X11, Niri, or a particular application. The generated inventory records
+which of those consumers each Stylix target actually covers. A selected cursor
+is complete only when it is installed and every required cursor consumer has
+one selection owner; unknown coverage is reported, not treated as global
+success.
+
+### Theme Bundle
+
+A user-facing named selection that groups coherent appearance intent without
+erasing component boundaries. A Theme Bundle selects:
+
+- exactly one Color Palette;
+- exactly one Structure Profile;
+- optionally one item from each configured Typography, Cursor, Icon, and
+  Wallpaper Library.
+
+The bundle stores references, not copied colors or asset data. A wallpaper used
+as a displayed background and an image used as a palette-generation input are
+separate references even when they point to the same declared image. Their
+relationship must be explicit rather than inferred from a filename.
+
+A bundle that references any `rebuild` item must be visible to Nix evaluation.
+Declare it in the local Nix module or in a repository-owned data file read by
+that module; Home Manager emits the corresponding immutable runtime bundle
+definition. Do not independently hand-author its Stylix selection in Nix and
+its library references in mutable runtime TOML. The Nix-selected declarative
+theme determines which rebuild-owned items are effective.
+
+Runtime switching is permitted between bundles whose rebuild-owned selections
+already match the effective inventory. Selecting a bundle with a different
+cursor package, font set, icon package, wallpaper, or other rebuild-owned item
+requires changing the Nix declarative theme and activating it first. Runtime-only
+bundles that reference no declarative assets may remain entirely in runtime
+configuration.
+
+Initially, non-color bundle selections are declarative assertions and status
+inputs. Theme Manager applies runtime-capable parts and reports `session` parts
+that await restart. If a selected `rebuild` item differs from the effective
+Nix-generated inventory, apply fails before runtime writes and tells the user a
+NixOS or Home Manager rebuild is required; Theme Manager never invokes that
+rebuild automatically. Add runtime selection for an asset class only when all
+of these are true:
+
+- the selected item is already installed declaratively;
+- the platform exposes a supported, deterministic runtime selection mechanism;
+- the adapter can state which toolkits or sessions it covers;
+- switching does not compete with the active Stylix target.
+
+### Delivery Cadence
+
+Every selected item and capability reports when it can become effective:
+
+- **runtime**: Theme Manager can apply it immediately;
+- **session**: it is configured, but complete effect requires a new graphical
+  session or application restart;
+- **rebuild**: it changes only through NixOS/Home Manager evaluation and
+  activation.
+
+Cadence is not an implementation detail. It is shown by `check`, `status`, and
+apply results so a Theme Bundle never implies false system-wide atomicity.
+
 ### Structure Profile
 
 Application-independent appearance intent such as:
@@ -127,6 +240,11 @@ Firefox, or Quickshell.
 The validated combination of one Structure Profile and one normalized Color
 Palette. It contains concrete numbers, booleans, and colors and is independent
 of any target configuration syntax.
+
+It remains the color-and-structure input to runtime adapters. Cursor packages,
+fonts, icon packages, and wallpapers do not enter Resolved Appearance; they
+remain typed Theme Bundle selections handled by their declared library and
+delivery integration.
 
 ### Target Adapter
 
@@ -166,6 +284,12 @@ engine. Both forms connect machine-specific facts to portable appearance data:
 - enable/disable state;
 - adapter-specific settings that have a demonstrated current use.
 
+An adapter declares the capabilities it actually provides and the output or
+setting boundary through which it provides them. Configuration may enable,
+select, or narrow those capabilities, but must not invent capability claims for
+an adapter. This prevents a user-authored `provides` list from making an
+incomplete renderer appear complete.
+
 For example, the Niri adapter is implementation code. A wire that maps
 `^firefox$` to the `browser` role and `^(foot|footclient)$` to the `terminal`
 role is host/runtime configuration.
@@ -203,6 +327,74 @@ An upstream NixOS or Home Manager module that applies rebuild-time colors,
 fonts, opacity, cursors, wallpaper, or other appearance settings to a supported
 application. It is conceptually a premade declarative wire, but it remains owned
 and executed by Stylix rather than Theme Manager.
+
+For planning, a selected Stylix target contributes explicit capability claims
+from a Nix-generated inventory. Theme Manager does not introspect Stylix
+internals at runtime or wrap the target. The inventory records only the target
+features and ownership boundaries verified by this configuration.
+
+### Application Contract
+
+A small typed declaration of what this configuration means by complete support
+for one application. It contains required and optional capabilities, for
+example:
+
+```text
+foot.required = [colors, font, background_alpha, reload]
+foot.optional = [cursor_color, bell_color, padding]
+```
+
+Contracts describe desired outcomes, not every setting the application has.
+Start with capabilities used by the two hosts and add one only when a real
+configuration needs it. Absence of an optional capability is visible but does
+not fail validation; absence or duplicate ownership of a required capability
+does.
+
+Do not use a minimal contract to hide useful features. During Phase 0, record
+each capability discovered in current output, selected Stylix targets, Noctalia
+templates, and application documentation as `required`, `optional`, or
+`excluded` with a short reason. Adapter and generated target metadata distinguish
+capabilities they **support** from claims they currently **provide**. `check`
+shows supported-but-unselected optional capabilities, so a useful Stylix feature
+does not disappear merely because the initial bundle omitted it. This is a
+review ledger, not a promise to model every upstream option forever.
+
+Use coarse capabilities that correspond to real ownership boundaries. Initial
+vocabulary may include:
+
+- global: palette, cursor installation, cursor selection, font installation,
+  typography selection, icon installation, icon selection, wallpaper;
+- application: colors, font, background alpha, application structure, reload;
+- compositor: window opacity, blur, corner radius, gaps, focus ring, shadow.
+
+Do not create a free-form capability namespace, a dependency solver, or one
+capability per application key.
+
+### Capability Claim and Capability Plan
+
+A Capability Claim records a typed capability, its scope, owner, source,
+delivery cadence, and concrete merge/output boundary. Claims come from built-in
+adapter metadata, the Nix-generated Stylix inventory, or the constrained
+Noctalia Template Adapter; they are not arbitrary assertions in runtime
+configuration.
+
+The Capability Plan combines the claims selected by the active Theme Bundle and
+enabled integrations, then validates:
+
+1. every required application and global capability has exactly one owner;
+2. optional missing capabilities are reported;
+3. no two contributors own the same file, setting group, or exclusive
+   capability;
+4. contributors to one application meet only at a declared and tested merge or
+   include boundary;
+5. the effective source and cadence of every capability are visible;
+6. every referenced library item is declared, installed where necessary, and
+   compatible with its delivery integration;
+7. selected assets cover every host-declared consumer in their required scope.
+
+The plan is an internal value shared by `check`, `status`, and `apply`. It is
+not a fourth wire choice, a composite provider, a plugin API, or a universal
+intermediate configuration format.
 
 ### Frontend
 
@@ -255,7 +447,7 @@ Stylix is deliberately beside this pipeline rather than inside it:
 
                          RUNTIME PIPELINE
 
-       selected Color Provider + Structure Profile
+       selected Theme Bundle palette + Structure Profile
                               |
                        Theme Manager wires
                               |
@@ -266,10 +458,44 @@ Stylix may optionally export its evaluated colors as a normalized JSON Color
 Palette for Theme Manager. Theme Manager must not call Stylix targets or treat
 them as runtime adapters.
 
+The user-facing selection and validation layer sits above both pipelines:
+
+```text
+                           Theme Bundle
+             palette + structure + explicit library items
+                                  |
+                                  v
+                         desired capabilities
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+          v                       v                       v
+ Nix-generated Stylix      built-in adapter       Noctalia template
+ target/library inventory       claims                 claims
+          |                       |                       |
+          +--------------- Capability Plan -------------+
+                                  |
+                    coverage, collision, boundary,
+                         source, cadence, status
+                                  |
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+           rebuild             runtime             delegated
+            domain              domain           Noctalia domain
+```
+
+This produces one validated desired configuration, not one global transaction.
+All inputs are validated before Theme Manager-owned writes; each owned file is
+atomically replaced. Nix activation and shell-driven Noctalia remain separate
+transaction domains and their status is reported separately. The planner must
+not claim rollback or atomicity across those domains.
+
 ## Application wiring choices
 
-Applications have three explicit wiring choices. They are alternatives for an
-owned setting or file, not layers that rewrite each other's output.
+Applications have three explicit contribution sources. They are alternatives
+for an owned capability, setting group, or file, not necessarily alternatives
+for the whole application and never layers that rewrite each other's output.
 
 | Choice | Update time | Palette input | Best use | Structural fields |
 | --- | --- | --- | --- | --- |
@@ -282,10 +508,29 @@ setting group. For example, a Noctalia Foot template may own Foot's colors while
 a Niri adapter owns the terminal window's blur and corner radius. Stylix's Foot
 target must then be disabled because it would compete for the same colors.
 
+Multiple sources may complete one application. For example, Stylix may own
+Foot's colors and font, a narrow Foot wire may own background alpha, and a Niri
+wire may own window blur and corner radius. That composition is valid only when
+the generated settings are disjoint and Foot or the compositor provides a
+stable merge/include boundary. The Capability Plan checks the combined Foot
+contract rather than requiring one contributor to implement everything.
+
+If Stylix and a custom Foot adapter both emit one monolithic file, capability
+labels cannot make them composable. Disable one renderer. Prefer either a small
+declarative extension through normal Home Manager options or a complete Foot
+adapter that consumes an exported Stylix palette while the Stylix Foot target is
+disabled.
+
 Noctalia Template Wires are not a fallback chain after built-in wires. Choose
 one color owner deliberately. Prefer an existing audited Noctalia template over
 writing a new Rust color renderer; prefer a built-in adapter when the target
 needs Structure Profile values or stronger typed validation.
+
+An application is **complete** when all capabilities required by its Application
+Contract have exactly one owner. It is **incomplete** when any required
+capability is missing and **conflicting** when an exclusive capability, setting,
+or file has multiple owners. `check` must show all three states and the source
+and cadence of every claim.
 
 ## Normalized color contract
 
@@ -322,14 +567,41 @@ correct automatic mapping between Base16 and Material 3 roles.
 ## Proposed runtime configuration
 
 The exact TOML syntax may change during implementation, but the relationships
-must remain this direct:
+must remain this direct. For bundles containing rebuild-owned items, this TOML
+is Home Manager output from the Nix-owned definition rather than a second
+hand-written source of truth:
 
 ```toml
 profiles_dir = "$XDG_CONFIG_HOME/theme-manager/profiles"
 state_file = "$XDG_STATE_HOME/theme-manager/state.toml"
 generated_dir = "$XDG_CONFIG_HOME/theme-manager/generated"
-default_structure = "glass"
-default_palette = "wallpaper"
+appearance_inventory_file = "$XDG_CONFIG_HOME/theme-manager/appearance-inventory.toml"
+default_theme = "forest-glass"
+
+[theme_bundles.forest-glass]
+structure = "glass"
+palette = "wallpaper"
+cursor = { library = "stylix-cursors", item = "bibata-modern-ice" }
+typography = { library = "stylix-typography", item = "desktop-default" }
+icons = { library = "stylix-icons", item = "papirus-dark" }
+wallpaper = { library = "stylix-wallpapers", item = "forest" }
+
+[theme_bundles.forest-paper]
+structure = "paper"
+palette = "wallpaper-muted"
+# Explicitly reuse the same Stylix-sourced assets; never infer their source.
+cursor = { library = "stylix-cursors", item = "bibata-modern-ice" }
+typography = { library = "stylix-typography", item = "desktop-default" }
+icons = { library = "stylix-icons", item = "papirus-dark" }
+wallpaper = { library = "stylix-wallpapers", item = "forest" }
+
+[application_contracts.foot]
+required = ["colors", "font", "background_alpha", "reload"]
+optional = ["cursor_color", "bell_color", "padding"]
+
+[application_contracts.firefox]
+required = ["colors"]
+optional = ["font", "window_structure"]
 
 [color_providers.noctalia]
 kind = "noctalia"
@@ -423,6 +695,100 @@ palette = "fallback"
 role = "desktop_shell"
 ```
 
+The Appearance Library definitions that contain Nix packages live in the local
+NixOS/Home Manager module, not in runtime TOML. The exact option shape may
+change, but provenance must remain explicit:
+
+```nix
+themeManager.appearanceLibraries = {
+  stylix-cursors = {
+    kind = "stylix-cursor";
+    items.bibata-modern-ice = {
+      package = pkgs.bibata-cursors;
+      name = "Bibata-Modern-Ice";
+      size = 24;
+    };
+  };
+
+  stylix-typography = {
+    kind = "stylix-typography";
+    items.desktop-default = {
+      monospace = {
+        package = pkgs.nerd-fonts.jetbrains-mono;
+        name = "JetBrainsMono Nerd Font";
+      };
+      sansSerif = {
+        package = pkgs.inter;
+        name = "Inter";
+      };
+      serif = {
+        package = pkgs.noto-fonts;
+        name = "Noto Serif";
+      };
+      emoji = {
+        package = pkgs.noto-fonts-color-emoji;
+        name = "Noto Color Emoji";
+      };
+      sizes = { applications = 12; desktop = 10; popups = 10; terminal = 12; };
+    };
+  };
+
+  stylix-icons = {
+    kind = "stylix-icons";
+    items.papirus-dark = {
+      package = pkgs.papirus-icon-theme;
+      dark = "Papirus-Dark";
+      light = "Papirus";
+    };
+  };
+
+  stylix-wallpapers = {
+    kind = "stylix-wallpaper";
+    items.forest = {
+      image = ./wallpapers/forest.png;
+      scalingMode = "fill";
+    };
+  };
+};
+
+themeManager.declarativeTheme = "forest-glass";
+
+themeManager.requiredAppearanceConsumers = {
+  cursor = [ "gtk" "niri" ];
+  icons = [ "gtk" ];
+  typography = [ "fontconfig" "foot" ];
+  wallpaper = [ "niri" ];
+};
+```
+
+The module translates the selected item into the corresponding public Stylix
+options and emits an inventory for runtime validation. A generated cursor entry
+contains at least:
+
+```toml
+[libraries.stylix-cursors]
+kind = "stylix-cursor"
+source = "stylix.cursor"
+installation_cadence = "rebuild"
+
+[libraries.stylix-cursors.items.bibata-modern-ice]
+name = "Bibata-Modern-Ice"
+size = 24
+installed = true
+effective = true
+```
+
+Selection claims record their own cadence separately because installation and
+selection are distinct and a toolkit or session may realize the configured
+cursor later than Nix installs its package.
+
+The inventory also records audited Stylix target claims, such as whether the
+enabled Foot target provides colors, font, background alpha, or some subset.
+Do not assume that enabling a target means it fulfills the complete application
+contract. Regenerate this inventory during Nix evaluation from local declared
+metadata; do not scrape generated files or inspect Stylix module internals at
+runtime.
+
 Full output paths are not configurable for Theme Manager-owned output. Each
 built-in adapter owns known filenames beneath `generated_dir`, such as
 `niri.kdl`, `foot.ini`, or `quickshell.json`. A headless Noctalia Template Wire
@@ -445,32 +811,44 @@ path escapes outside that root.
 
 ## Resolution and application behavior
 
-Applying a Structure Profile performs these steps:
+Applying a Theme Bundle performs these steps:
 
-1. Load and validate the selected Structure Profile.
-2. Determine the active default Color Palette.
-3. Collect the default palette plus any palette overrides selected by enabled
+1. Load the bundle and resolve its explicitly named Structure Profile, Color
+   Palette, and Appearance Library items.
+2. Load the Nix-generated Appearance Library and Stylix target inventory. Reject
+   unknown libraries, unknown items, source-kind mismatches, and required items
+   that are not installed.
+3. Collect capability claims from selected Stylix targets, enabled built-in
+   wires, Noctalia Template Wires, and selected library items.
+4. Build the Capability Plan. Reject duplicate ownership, missing required
+   capabilities, unsafe path overlap, and composition without a declared merge
+   boundary. Record optional gaps without failing.
+5. Compare desired bundle selections with the effective inventory. Reject an
+   ineffective `rebuild` selection before changing runtime output. Report a
+   configured `session` selection as pending without claiming it is live; do
+   not invoke a rebuild or restart automatically.
+6. Collect the bundle palette plus any palette overrides selected by enabled
    Application Wires.
-4. Load each unique Color Palette once through its Color Provider.
-5. Normalize and validate every loaded color map.
-6. Resolve the Structure Profile once per unique palette.
-7. Pass the appropriate Resolved Appearance to each normal Target Adapter.
-8. For each headless Noctalia Template Wire, verify that its palette is
-   Noctalia-backed, resolve its audited template, and invoke `noctalia theme`
-   against a staging destination. Read the result back before installation.
-9. Render or stage every Theme Manager-owned output before modifying a live
-   destination.
-10. Verify that every Theme Manager-owned path is inside the generated directory,
-    that no two wires claim the same file or setting, and that no selected Stylix
-    or shell-driven Noctalia target conflicts with it.
-11. Compare with existing files, skip unchanged output, and atomically replace
+7. Load each unique Color Palette once through its Color Provider, then normalize
+   and validate every loaded color map.
+8. Resolve the bundle's Structure Profile once per unique palette.
+9. Pass the appropriate Resolved Appearance to each normal Target Adapter.
+10. For each headless Noctalia Template Wire, verify that its palette is
+    Noctalia-backed, resolve its audited template, and invoke `noctalia theme`
+    against a staging destination. Read the result back before installation.
+11. Render or stage every Theme Manager-owned output before modifying a live
+    destination.
+12. Verify that every Theme Manager-owned path is inside the generated directory
+    and that the rendered paths still match the validated Capability Plan.
+13. Compare with existing files, skip unchanged output, and atomically replace
     changed files.
-12. If shell-driven Noctalia wires are selected, request their separately owned
+14. If shell-driven Noctalia wires are selected, request their separately owned
     render only after Theme Manager-owned output succeeds. Do not run shell IPC
     in headless mode.
-13. Persist the active Structure Profile and active default Color Palette after
-    Theme Manager-owned output succeeds; record and report any delegated
-    Noctalia failure separately and return a nonzero result.
+15. Persist the active Theme Bundle after Theme Manager-owned output succeeds.
+    Record the effective status of each component and report any pending
+    `session` work or delegated Noctalia failure separately. A delegated failure
+    returns a nonzero result.
 
 An invalid provider result, profile, wire, or Theme Manager-owned render must
 leave all Theme Manager-owned last-valid files intact. Cross-file rollback
@@ -500,6 +878,23 @@ Structure remains portable; adapters decide how the target can express it.
   the terminal's app ID.
 - The compositor must not apply whole-window opacity when Foot already owns
   background opacity, unless the wire explicitly requests that effect.
+
+An example complete Foot contract may resolve as:
+
+| Foot capability | Owner | Source | Cadence | Boundary |
+| --- | --- | --- | --- | --- |
+| colors | Stylix Foot target | `stylix-target:foot` | rebuild | Stylix-owned color settings |
+| font | Stylix Foot target | `stylix-target:foot` | rebuild | Stylix-owned font setting |
+| background alpha | narrow Foot wire | `theme-manager-wire:foot-alpha` | runtime | dedicated included fragment |
+| reload | Foot wire/application | `theme-manager-wire:foot-alpha` | runtime | documented Foot reload mechanism |
+| blur and corner radius | Niri wire | `theme-manager-wire:niri` | runtime | compositor window rule |
+
+This is valid only after inspecting the actual generated configuration and
+proving that the Foot include does not repeat Stylix-owned colors or fonts. If
+that boundary is unavailable, disable the Stylix Foot target and let one
+complete Foot adapter own the mutable Foot fragment. The adapter may consume a
+normalized palette exported from Stylix; that makes Stylix the color authority,
+not a second Foot renderer.
 
 ### Browser role
 
@@ -581,8 +976,8 @@ Noctalia dark/light native palette
 Two named Color Palettes may reference the same image with different schemes,
 for example `wallpaper` using `m3-content` and `wallpaper-muted` using `muted`.
 They are separate selectable palettes, not provider layers or transformations.
-Theme Manager resolves only the default palette and overrides needed by enabled
-wires during an apply.
+Theme Manager resolves only the active Theme Bundle's palette and overrides
+needed by enabled wires during an apply.
 
 `mode` selects the dark or light variant exposed to a palette and its templates.
 Noctalia's optional pure-black dark treatment is a separate palette option, not
@@ -742,6 +1137,44 @@ Theme Manager must not import Stylix internals or convert its target modules int
 runtime Application Wires. Stylix's `mkTarget` is intended for modules loaded by
 Stylix's own autoload mechanism, not ordinary external imports.
 
+### Explicit Stylix libraries and sources
+
+Use Stylix's useful cross-cutting features, but never hide their provenance
+behind generic bundle fields:
+
+| Desired feature | Explicit selection/source | Public Stylix options | Initial cadence |
+| --- | --- | --- | --- |
+| custom cursor | `library = "stylix-cursors"` | `stylix.cursor.package`, `.name`, `.size` | install: rebuild; selection: target-specific |
+| typography | `library = "stylix-typography"` | `stylix.fonts.*` and `.sizes.*` | install: rebuild; selection: target-specific |
+| icon theme | `library = "stylix-icons"` | `stylix.icons.enable`, `.package`, `.dark`, `.light` | install: rebuild; selection: target-specific |
+| wallpaper | `library = "stylix-wallpapers"` | `stylix.image`, `stylix.imageScalingMode` | target-specific rebuild/session |
+| static application colors | `source = "stylix-target:<target>"` | upstream target options | rebuild |
+| exported normalized colors | named JSON palette with `source = "stylix-export"` provenance | `config.lib.stylix.colors` emitted as JSON | rebuild |
+| Stylix-owned opacity | `source = "stylix-opacity"` | `stylix.opacity.*` through supported targets | rebuild |
+
+The library names are local, stable API names chosen by this configuration; they
+do not claim that Stylix publishes a downloadable cursor or font marketplace.
+For example, the local `stylix-cursors` library can contain several reviewed,
+pinned cursor packages. Selecting one means “use this declared item through the
+Stylix cursor integration,” not “search Stylix for a cursor with this name.”
+
+Keep installation and selection as separate capabilities. Nix installs the
+package; Stylix or a future supported runtime adapter selects the name and size.
+A runtime selector may only choose an already installed library item, and its
+claim must state which environments it covers, such as GTK, X11, or a specific
+Wayland compositor. Do not claim global cursor switching from one toolkit
+update.
+
+Likewise, a font library item includes packages, family names, and sizes; an
+icon item includes its package and light/dark names; a wallpaper item includes
+its image and scaling mode. These values belong to typed library items, not to
+the Color Palette or Structure Profile.
+
+Stylix opacity is different: it is a structural capability contribution, not an
+Appearance Library item. It may satisfy a contract only for targets and setting
+groups that Stylix demonstrably controls. A runtime Structure Profile must not
+also own those opacity settings.
+
 Use Stylix directly when all of the following are true:
 
 - the application has a satisfactory upstream target;
@@ -842,12 +1275,48 @@ the relevant application enable options instead.
 
 Relevant Stylix references:
 
+- Configuration, including colors, wallpaper, fonts, and target selection:
+  <https://nix-community.github.io/stylix/configuration.html>
+- NixOS options, including cursor, icons, font sizes, wallpaper scaling, and
+  opacity:
+  <https://nix-community.github.io/stylix/options/platforms/nixos.html>
 - Module/target guidance:
   <https://nix-community.github.io/stylix/modules.html>
 - Stylix repository:
   <https://github.com/nix-community/stylix>
 
 ## Stable component boundaries
+
+### Appearance Libraries own
+
+- named, explicitly sourced non-color items;
+- typed metadata required by their delivery integration;
+- the distinction between package installation and selection;
+- source and cadence information emitted into the runtime inventory.
+
+They do not generate colors, render arbitrary application configuration, fetch
+packages at runtime, or hide one integration behind another library's name.
+
+### Theme Bundles own
+
+- references to one palette and one structure profile;
+- explicit library-and-item references for optional typography, cursor, icons,
+  and wallpaper;
+- the coherent user-facing name of that selection.
+
+They do not copy component values, declare ownership, or determine whether an
+adapter is complete.
+
+### Application Contracts and Capability Planner own
+
+- the small typed required/optional capability vocabulary;
+- collection of trusted claims from adapters and generated inventories;
+- coverage, duplicate-owner, boundary, source, and cadence validation;
+- a single desired-versus-effective plan shared by `check`, `status`, and
+  `apply`.
+
+They do not render output, resolve colors, invoke Nix, invent claims from user
+configuration, or provide cross-domain rollback.
 
 ### Color Providers own
 
@@ -873,6 +1342,7 @@ output paths, or frontend behavior.
 - fixed output filenames beneath the generated directory;
 - target-specific escaping and validation;
 - translation of supported structural fields and normalized colors.
+- trusted capability metadata for the exact settings and boundary they render.
 
 ### Noctalia Template Adapter owns
 
@@ -902,6 +1372,13 @@ invent missing Noctalia tokens, or hide Noctalia-owned hooks and output paths.
 - user-service configuration;
 - optional includes pointing applications at generated fragments;
 - optional Stylix configuration and target selection;
+- typed Stylix Appearance Library declarations and translation into public
+  Stylix options;
+- Nix-visible Theme Bundle declarations when they reference rebuild-owned items,
+  selection of the active declarative theme, and emission of runtime bundle
+  data;
+- generation of the read-only library, effective-value, and audited target
+  capability inventory, including the evaluated Stylix revision;
 - shell-driven Noctalia template ID registration and pinned template packaging;
 - small missing declarative settings.
 
@@ -919,25 +1396,39 @@ configuration, or write generated files themselves.
 The primary CLI should expose only demonstrated workflows:
 
 ```text
+theme-manager theme list
+theme-manager theme show <theme>
 theme-manager structure list
 theme-manager palette list
+theme-manager library list <library>
 theme-manager status
-theme-manager apply <structure> [--palette <palette>]
-theme-manager check
+theme-manager apply <theme>
+theme-manager check [<theme>]
 theme-manager watch
 ```
 
-Top-level `list` may remain as a short alias for `structure list` if useful.
+`library list stylix-cursors` lists only the declared items from that explicitly
+named library and shows their Stylix source and cadence. It does not merge cursor
+items from unrelated integrations into a global ambiguous list.
+
+Direct structure and palette overrides may exist as expert preview options, but
+the normal apply operation selects a complete Theme Bundle so capability
+coverage and non-color intent are not bypassed. Top-level `list` may remain as a
+short alias for `theme list` if useful.
 Compatibility aliases from the pre-release implementation may be deleted when
 they add more code than value; there are no external API consumers to preserve.
 
 Persistent state contains only runtime selections and the minimum data needed
 for safe operation:
 
-- active Structure Profile;
-- active default Color Palette;
+- active Theme Bundle; its palette, structure, and library references remain in
+  configuration rather than being copied into state;
 - optionally disabled Application Wires, only if runtime toggling remains a real
   workflow.
+
+Desired-versus-effective library status and capability ownership are recomputed
+from configuration and the generated inventory. Do not persist a second mutable
+copy that can drift from Nix.
 
 Generated-file ownership hashes, transaction journals, force-overwrite flags,
 component registries, and health databases should be removed unless the new
@@ -946,9 +1437,10 @@ is acceptable only if it is used by `status` or service diagnostics.
 
 The optional TUI initially provides:
 
-- Structure Profile browsing;
-- Color Palette browsing;
-- active selection display;
+- Theme Bundle browsing, with component source and cadence visible;
+- optional Structure Profile, Color Palette, and explicitly named Appearance
+  Library browsing as detail views;
+- active desired/effective selection and capability coverage display;
 - apply/preview when preview is cheap;
 - clear validation and provider errors;
 - keyboard navigation, optionally including Vim-style keys.
@@ -961,7 +1453,8 @@ clean boundary after the runtime library is stable.
 Watch mode observes only inputs that can affect active outputs:
 
 - runtime configuration;
-- the profile directory and active profile;
+- the profile directory and active Theme Bundle;
+- the Nix-generated appearance and Stylix target inventory;
 - state changes made by another frontend;
 - active Color Provider source paths;
 - a shell-driven normalized palette JSON;
@@ -971,10 +1464,11 @@ Watch parent directories rather than replaceable files and filter relevant
 filenames. Debounce duplicate filesystem events. After any event:
 
 1. reload typed configuration;
-2. reload the active selections;
-3. load all palettes required by enabled wires;
-4. render and validate every output;
-5. replace only changed files.
+2. reload the active Theme Bundle and generated inventory;
+3. rebuild and validate the Capability Plan;
+4. load all palettes required by enabled wires;
+5. render and validate every output;
+6. replace only changed files.
 
 Missing provider input at cold start is a waiting state, not a reason to crash in
 a restart loop. Log one concise error, keep last-valid output, continue watching,
@@ -1013,9 +1507,10 @@ usable. Do not perform a flag-day rewrite.
 ### Phase 0: inventory, ownership, and output snapshots
 
 - List every Theme Manager behavior actually used on `homer` and `bart`.
-- Inventory every current color owner, including Noctalia templates, hard-coded
-  application themes, Niri settings, Foot settings, Firefox integration,
-  Starship, and any future Stylix targets.
+- Inventory every current appearance owner, including Noctalia templates,
+  hard-coded application themes, Niri settings, Foot settings, Firefox
+  integration, Starship, cursor, fonts, icons, wallpaper, opacity, and any
+  selected Stylix targets.
 - Mark each setting as one of:
   - optional Stylix target;
   - local declarative Nix setting;
@@ -1026,10 +1521,19 @@ usable. Do not perform a flag-day rewrite.
 - Record exact current Niri and Foot output as golden fixtures.
 - Record which fields in `glass.toml` and `paper.toml` are actually consumed.
 - Identify unused fields such as structural values that no adapter renders.
+- Draft the smallest required/optional Application Contract for each configured
+  application. Record capability, owner, source, cadence, output/setting
+  boundary, and whether the claim is verified by generated output.
+- Classify every useful capability found during the audit as required, optional,
+  or explicitly excluded with a reason. Record supported-but-unselected
+  capabilities separately from currently provided claims.
+- Identify every real merge/include boundary before planning multi-contributor
+  application support. Treat an unverified boundary as non-composable.
 - Decide the initial host palette authority mode.
 - Freeze features in the old Luau architecture.
 
-Deliverable: a reviewed ownership matrix and fixtures proving what must survive.
+Deliverable: reviewed ownership and capability matrices, initial application
+contracts, and fixtures proving what must survive.
 
 ### Phase 1: establish optional Stylix boundaries
 
@@ -1038,11 +1542,21 @@ Deliverable: a reviewed ownership matrix and fixtures proving what must survive.
 - If selected, add the upstream flake input and appropriate NixOS/Home Manager
   modules.
 - Start with explicit target selection rather than broad automatic ownership.
-- Enable only targets whose complete generated result is wanted.
+- Enable only targets whose owned generated result is wanted.
 - Disable targets that conflict with live Theme Manager colors or fragments.
-- Verify the chosen static palette, fonts, cursor, wallpaper, and application
-  targets through a rebuild and login.
-- Record any allowed rebuild-time/runtime palette cadence difference.
+- Declare any selected cursor through an explicitly named Stylix Cursor Library,
+  for example `stylix-cursors/bibata-modern-ice`; do the same for selected
+  typography, icons, and wallpaper.
+- Keep bundles containing rebuild-owned items and the selected declarative theme
+  in Nix-visible configuration, then emit their runtime representation; never
+  maintain parallel Nix and mutable-TOML selections.
+- Translate library items only through public Stylix options and emit their
+  source, installed/effective status, and cadence into a generated inventory.
+- Emit audited capability claims for each selected Stylix application target;
+  do not equate target enablement with complete contract coverage.
+- Verify the chosen static palette, fonts, cursor, icons, wallpaper, opacity,
+  and application targets through a rebuild and login.
+- Record every allowed rebuild/session/runtime cadence difference.
 
 Deliverable: Stylix is either absent by choice or independently useful without
 being a Theme Manager dependency.
@@ -1050,8 +1564,11 @@ being a Theme Manager dependency.
 ### Phase 2: introduce the typed vocabulary without changing behavior
 
 - Rename public concepts from provider/target/plugin to Color Provider, Color
-  Palette, Target Adapter, and Application Wire.
-- Introduce typed configuration for named providers, palettes, and wires.
+  Palette, Target Adapter, and Application Wire. Introduce Appearance Library,
+  Theme Bundle, Application Contract, Capability Claim, and Capability Plan
+  with the narrow meanings defined above.
+- Introduce typed configuration for named providers, palettes, bundles,
+  contracts, libraries, and wires.
 - Rename structural `material` to `surface_style`.
 - Keep a temporary configuration migration path only long enough to switch both
   hosts in one phase.
@@ -1067,6 +1584,10 @@ current fragments.
   required by the inventory.
 - Implement only the Niri and Foot Target Adapters currently required.
 - Keep adapter construction as a small enum/match, not a registry or factory.
+- Have built-in adapters expose trusted typed capability and boundary metadata.
+- Build one Capability Plan from adapter claims and the Nix-generated inventory;
+  fail on missing required coverage or duplicate ownership and report optional
+  gaps.
 - Fix adapter output filenames beneath one generated directory.
 - Resolve each unique palette once and support per-wire palette overrides.
 - Render all enabled outputs before writing any of them.
@@ -1112,9 +1633,10 @@ an explicitly delegated alternative.
   providers.
 - Add a Hyprland, another compositor, or custom Quickshell adapter only when that
   environment is actually adopted and its required output is known.
-- For each application, choose Stylix, a built-in adapter, or a Noctalia template
-  as its color owner; use separate structural adapters only where settings are
-  provably disjoint.
+- For each application capability, choose exactly one Stylix target, built-in
+  adapter, or Noctalia template owner. Permit multiple contributors to complete
+  one Application Contract only where their settings and files are provably
+  disjoint and a real merge/include boundary exists.
 - Prefer native application settings or includes over editing complete user
   configuration files.
 - Upstream generally useful static declarative support to Stylix when
@@ -1126,7 +1648,10 @@ core data model.
 ### Phase 6: optional TUI
 
 - Verify the CLI covers normal operation first.
-- Adapt the TUI to Structure Profiles, Color Palettes, and Application Wires.
+- Adapt the TUI to Theme Bundles and their Structure Profile, Color Palette,
+  explicit Appearance Library items, Capability Plan, and Application Wires.
+- Show desired versus effective values and `runtime`, `session`, or `rebuild`
+  cadence; do not present a pending declarative item as live.
 - Reuse runtime library operations directly.
 - Remove plugin/component management screens.
 - Keep Ratatui and Crossterm out of minimal/headless installations when
@@ -1167,6 +1692,30 @@ Minimum automated and manual checks before deleting the old implementation:
 - `cargo test` succeeds for the simplified workspace.
 - `nix flake check` succeeds.
 - both host configurations evaluate.
+- every non-color Theme Bundle item names both its Appearance Library and item;
+  an unqualified cursor, font, icon, or wallpaper reference is rejected.
+- `stylix-cursors/bibata-modern-ice` translates to the expected
+  `stylix.cursor` package, name, and size, and the generated inventory reports
+  its source, installation state, effective state, and cadence.
+- cursor selection is not reported complete until the inventory has exactly one
+  owner for every host-declared cursor consumer; removing GTK or Niri coverage
+  reports the precise missing scope.
+- an unknown library, unknown item, or item whose kind does not match the bundle
+  field fails before runtime output changes.
+- `check` distinguishes capabilities an adapter or selected Stylix target
+  supports from those it currently provides, and lists supported-but-unselected
+  optional features.
+- every capability found in the Phase 0 feature audit is required, optional, or
+  excluded with a recorded reason; none silently disappears during migration.
+- a Theme Bundle whose selected `rebuild` item is not effective fails before
+  runtime output changes and reports that Nix activation is required.
+- bundles containing rebuild-owned items have one Nix-visible source of truth;
+  the emitted runtime definition and effective inventory cannot be configured
+  independently.
+- runtime switching succeeds between bundles sharing the same effective
+  declarative items and fails safely when a bundle requires different ones.
+- a configured `session` item that awaits restart is reported as pending rather
+  than live.
 - the runtime package works with the static provider and no Noctalia package.
 - the engine loads with no Niri wire configured.
 - a headless Noctalia CLI render succeeds while Noctalia Shell is not running.
@@ -1190,6 +1739,18 @@ Minimum automated and manual checks before deleting the old implementation:
   `theme-manager check`.
 - the same application color file cannot be owned by Stylix, a built-in adapter,
   and a Noctalia Template Wire simultaneously.
+- a complete Foot plan may combine verified disjoint Stylix color/font claims,
+  a narrow Foot alpha fragment, and Niri window structure, satisfying every
+  required Foot capability exactly once.
+- removing the alpha owner makes that Foot plan incomplete and identifies
+  `background_alpha` as missing; removing an optional capability reports a gap
+  without failing.
+- two contributors claiming Foot colors make the plan conflicting even if they
+  write different files.
+- two contributors that claim disjoint capabilities but write one monolithic
+  Foot configuration are rejected for lacking a safe merge boundary.
+- capability claims cannot be added or expanded through untrusted runtime
+  configuration.
 - shell-driven Noctalia JSON changes reapply when that mode is enabled.
 - Static and Noctalia providers normalize to the same required semantic
   contract.
@@ -1207,8 +1768,8 @@ Minimum automated and manual checks before deleting the old implementation:
   triggers an update.
 - duplicate event bursts result in one logical reapply.
 - reapplying identical input does not rewrite output files.
-- restarting the watcher preserves and reapplies active structure and palette
-  selections.
+- restarting the watcher preserves and reapplies the active Theme Bundle and
+  recomputes its component references and Capability Plan from configuration.
 - attempts to escape the generated directory through `..` or symlinks fail.
 - two wires cannot claim the same generated path.
 - the runtime tool never writes into the Nix store or a Home Manager-generated
@@ -1216,6 +1777,11 @@ Minimum automated and manual checks before deleting the old implementation:
 - Stylix-disabled and Stylix-enabled host evaluations both work.
 - when Stylix and Theme Manager touch the same application, a test or inspected
   generated configuration confirms their setting ownership is disjoint.
+- `check`, `status`, and `apply` report the same capability owners, sources,
+  boundaries, and cadences from one Capability Plan implementation.
+- Theme Manager-owned output failure preserves last-valid runtime files;
+  delegated Noctalia and Nix domains are reported separately without claiming
+  cross-domain rollback.
 - the system works without the TUI installed.
 
 ## Non-goals
@@ -1234,6 +1800,16 @@ Minimum automated and manual checks before deleting the old implementation:
   template discovery or updates.
 - A Theme Manager marketplace or remote catalog. Noctalia community templates
   remain a Noctalia feature and must be reviewed and pinned before use here.
+- Treating an Appearance Library as a package search service or automatically
+  discovering all cursors, fonts, icons, or wallpapers in Nixpkgs.
+- Putting cursors, fonts, icons, wallpaper, or package references into the Color
+  Palette.
+- A free-form capability namespace, general dependency solver, or capability per
+  application setting.
+- Global atomic application across Nix activation, Theme Manager-owned files,
+  and delegated Noctalia hooks.
+- Runtime switching for an asset merely because Stylix can configure it at
+  rebuild time.
 - Automatic semantic mappings for every color system.
 - Solving compositors or shells before they are actually selected.
 - Keeping pre-release APIs solely for compatibility.
@@ -1249,6 +1825,58 @@ versioned script API, or runtime loading.
 
 Maintain the per-application ownership matrix. Use separate optional includes
 only for disjoint settings. Otherwise disable one owner for the whole target.
+
+### An application is advertised as supported but remains incomplete
+
+Define support through its Application Contract rather than through an enabled
+target name. Fail `check` and `apply` when a required capability has no owner.
+Show optional gaps without making them failures, and keep contracts limited to
+features this configuration actually expects.
+
+### Capability labels hide an unsafe file merge
+
+Require every claim to include its concrete setting/output boundary. Disjoint
+labels are insufficient when two contributors replace one monolithic file or
+when precedence is undocumented. Use one complete owner in that case.
+
+### Capability modeling becomes another plugin framework
+
+Keep a small typed enum and trusted claims compiled into adapters or emitted by
+the local Nix module. No arbitrary runtime claim registration, discovery,
+dependency resolution, or third-party capability manifests.
+
+### Stylix updates invalidate audited target claims
+
+Pin Stylix through the flake lock, record the evaluated Stylix revision in the
+generated inventory, and verify each enabled target's claimed setting boundary
+against inspected or fixture output. A revision change that affects an audited
+target requires refreshing that evidence before the claim is trusted.
+
+### Appearance Library names hide their real source
+
+Require integration-specific names such as `stylix-cursors` and record the
+public option path, source kind, and cadence in the generated inventory. A
+future runtime cursor library receives a different name even if it contains the
+same cursor package.
+
+### A Theme Bundle appears applied while declarative parts are stale
+
+Compare the desired bundle with the effective Nix-generated inventory before
+runtime writes. Reject stale `rebuild` selections, report `session` selections
+as pending, and never imply cross-domain atomicity.
+
+### Nix and runtime bundle definitions drift
+
+Make Nix-visible configuration authoritative for every bundle that references a
+rebuild-owned item and emit its runtime representation from Home Manager. Allow
+fully runtime-owned bundle definitions only when they contain no declarative
+asset references.
+
+### Theme Bundles turn Color Palettes into universal theme objects
+
+Store references in the bundle. Keep colors in Color Palettes, portable
+structure in Structure Profiles, and packages/assets in typed Appearance
+Libraries. Do not copy their contents into the bundle.
 
 ### Noctalia templates become an arbitrary execution escape hatch
 
@@ -1318,6 +1946,19 @@ The migration is complete when:
 - Color Providers only produce normalized colors;
 - Color Palettes explicitly select their provider and scheme/input;
 - Structure Profiles contain only portable appearance intent;
+- Theme Bundles explicitly reference their Color Palette, Structure Profile,
+  and every selected Appearance Library and item;
+- selected cursors, typography, icons, and wallpapers retain explicit source,
+  installation/effective state, and delivery cadence, with no package data
+  smuggled into palettes;
+- the local `stylix-cursors` library demonstrably configures a custom cursor
+  package, name, and size through public Stylix options;
+- Application Contracts define the required and optional outcomes actually used
+  by each configured application;
+- one Capability Plan powers `check`, `status`, and `apply`, rejects missing or
+  duplicate required ownership, and reports optional gaps and cadence;
+- multi-contributor applications are allowed only at verified setting and
+  merge/include boundaries;
 - Application Wires are typed configuration over built-in Target Adapters,
   including one constrained Noctalia Template Adapter rather than a general
   extension interface;
@@ -1326,6 +1967,8 @@ The migration is complete when:
 - Stylix is optional, direct, and independently owned;
 - every overlap among Stylix, built-in adapters, and Noctalia templates has
   documented disjoint setting ownership;
+- Nix activation, runtime-owned files, and delegated Noctalia remain explicit
+  execution domains with no false global atomicity claim;
 - Niri and Foot are removable configured integrations rather than engine
   assumptions;
 - another compositor or custom Quickshell can be added at the adapter/wire edge
@@ -1341,7 +1984,14 @@ Start with Phase 0. Produce the ownership matrix and golden Niri/Foot output fro
 the current configuration before changing names or deleting code. Include a row
 for every setting currently produced by Noctalia, Niri, Foot, Firefox,
 Starship, and any selected Stylix target. That evidence determines which profile
-fields, runtime controls, and safety machinery survive the simplification. Also
+fields, runtime controls, and safety machinery survive the simplification.
+
+For each row, record the typed capability, required/optional status, owner,
+explicit source, cadence, concrete setting/file boundary, and evidence that the
+claim is accurate. Draft the Foot and Firefox Application Contracts from that
+inventory and prove or reject every proposed merge/include boundary. Inventory
+the selected cursor, typography, icons, and wallpaper too, including their Nix
+packages, effective values, and intended explicit Stylix library names. Also
 record every selected Noctalia template ID or user template, its output files,
 its hooks, whether it requires the shell, and whether it can instead run through
 the constrained headless wire.
